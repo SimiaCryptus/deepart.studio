@@ -38,8 +38,9 @@ class JpgRegistration
   id: String = UUID.randomUUID().toString,
   indexFile: String = "index.html",
   className: String = "",
+  indexStr: String = "",
   description: String = ""
-) extends JobRegistration[Tensor](bucket, reportUrl, liveUrl, canvas, instances, id, indexFile, className, description) {
+) extends JobRegistration[Tensor](bucket, reportUrl, liveUrl, canvas, instances, id, indexFile, className, indexStr, description) {
 
   def uploadImage(canvas: Tensor)(implicit s3client: AmazonS3) = {
     val key = s"img/$id.jpg"

@@ -49,6 +49,7 @@ abstract class JobRegistration[T]
   id: String = UUID.randomUUID().toString,
   indexFile: String,
   className: String,
+  indexStr: String,
   description: String
 ) extends AutoCloseable with Logging {
   var future: ScheduledFuture[_] = null
@@ -66,6 +67,19 @@ abstract class JobRegistration[T]
 
   def periodMinutes = 5
 
+  def stop()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
+    try {
+      update()
+    } catch {
+      case e: Throwable => logger.warn("Error in update", e)
+    }
+    try {
+      close()
+    } catch {
+      case e: Throwable => logger.warn("Error in close", e)
+    }
+  }
+
   def update()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
     upload()
     rebuildIndex()
@@ -80,23 +94,26 @@ abstract class JobRegistration[T]
       image = uploadImage(canvas()),
       id = id,
       className = className,
+      indexStr = indexStr,
       description = description
     ).save(bucket))
   }
 
   def rebuildIndex()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
     val jobs = JobRegistry.list(bucket).toArray.groupBy(_.className)
+
     def toHtml(item: JobRegistry) = {
       if (item.isLive()(ec2client).toOption.getOrElse(false)) {
-        s"""<div><a href="${item.liveUrl}"><img src="${item.image}" style="max-width: 50%" /></a>${item.description}</div>""".stripMargin
+        s"""<div style="width: 100%; float: left;"><div style="float: left;"><a href="${item.liveUrl}"><img src="${item.image}" /></a></div><div>${item.description}</div></div>""".stripMargin
       } else {
-        s"""<div><a href="${item.reportUrl}"><img src="${item.image}" style="max-width: 50%" /></a>${item.description}</div>""".stripMargin
+        s"""<div style="width: 100%; float: left;"><div style="float: left;"><a href="${item.reportUrl}"><img src="${item.image}" /></a></div><div>${item.description}</div></div>""".stripMargin
       }
     }
-    for((className, jobs) <- jobs.filterNot(_._1.isEmpty)) {
-      write(s"$className.html", (jobs.map(item => toHtml(item))).mkString("\n"))
+
+    for ((className, jobs) <- jobs.filterNot(_._1.isEmpty)) {
+      write(s"$className.html", (jobs.sortBy(-_.lastReport).map(item => toHtml(item))).mkString("\n"))
     }
-    write(indexFile, (jobs.mapValues(_.sortBy(-_.lastReport).head).map(item =>
+    write(indexFile, (jobs.mapValues(_.sortBy(-_.lastReport).head).toList.sortBy(_._2.indexStr).map(item =>
       s"""<h1><a href="${item._1}.html">${item._1}</a></h1>${toHtml(item._2)}""")).mkString("\n"))
   }
 
@@ -105,25 +122,34 @@ abstract class JobRegistration[T]
     val metadata = new ObjectMetadata()
     metadata.setContentType("text/html")
     s3client.putObject(new PutObjectRequest(bucket, indexFile, new ByteArrayInputStream(
-      s"""<html><head></head><body>
+      s"""<html><head>
+         |<style type="text/css">
+         |a {
+         |  text-decoration: none;
+         |  cursor: crosshair;
+         |  font-family: cursive;
+         |}
+         |hr {
+         |  outline-style: dashed;
+         |  border-style: solid;
+         |}
+         |div {
+         |  border-style: none;
+         |  font-family: cursive;
+         |  padding: 10px;
+         |
+         |}
+         |img {
+         |  padding: 0px 10px 0px 0px;
+         |  vertical-align: text-top;
+         |  max-width: 100%;
+         |}
+         |</style>
+         |</head><body>
          |$bodyHtml
-
          |</body></html>""".stripMargin.
         getBytes
     ), metadata).withCannedAcl(CannedAccessControlList.PublicRead))
-  }
-
-  def stop()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
-    try {
-      update()
-    } catch {
-      case e : Throwable => logger.warn("Error in update",e)
-    }
-    try {
-      close()
-    } catch {
-      case e : Throwable => logger.warn("Error in close",e)
-    }
   }
 
   override def close(): Unit = {

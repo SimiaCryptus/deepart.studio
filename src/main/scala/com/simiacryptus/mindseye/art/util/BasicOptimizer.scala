@@ -21,7 +21,6 @@ package com.simiacryptus.mindseye.art.util
 
 import java.awt.image.BufferedImage
 import java.lang
-import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import com.simiacryptus.aws.S3Util
@@ -44,11 +43,12 @@ import scala.collection.mutable.ArrayBuffer
 
 trait BasicOptimizer extends Logging {
 
-  def optimize(canvasImage: Tensor, trainable: Trainable)(implicit log: NotebookOutput):Double = {
+  def optimize(canvasImage: Tensor, trainable: Trainable)(implicit log: NotebookOutput): Double = {
     try {
       def currentImage = render(canvasImage).toRgbImage
+
       withMonitoredJpg[Double](() => currentImage) {
-        log.subreport("Optimization_" + UUID.randomUUID().toString, (sub: NotebookOutput) => {
+        log.subreport("Optimization", (sub: NotebookOutput) => {
           optimize(currentImage, trainable)(sub).asInstanceOf[java.lang.Double]
         })
       }
@@ -65,9 +65,12 @@ trait BasicOptimizer extends Logging {
     renderingNetwork(canvasImage.getDimensions).eval(canvasImage).getDataAndFree.getAndFree(0)
   }
 
-  def optimize(currentImage: => BufferedImage, trainable: Trainable)(implicit out: NotebookOutput):Double = {
+  def renderingNetwork(dims: Seq[Int]): PipelineNetwork = new PipelineNetwork(1)
+
+  def optimize(currentImage: => BufferedImage, trainable: Trainable)(implicit out: NotebookOutput): Double = {
     val timelineAnimation = new ArrayBuffer[BufferedImage]()
-    NotebookRunner.withMonitoredGif(() => timelineAnimation.toList ++ List(currentImage)) {
+    timelineAnimation += currentImage
+    NotebookRunner.withMonitoredGif(() => timelineAnimation.toList ++ List(currentImage), delay = 1000) {
       withTrainingMonitor(trainingMonitor => {
         out.eval(() => {
           val lineSearchInstance: LineSearchStrategy = lineSearchFactory
@@ -83,10 +86,11 @@ trait BasicOptimizer extends Logging {
               }
 
               override def onStepComplete(currentPoint: Step): Unit = {
-                if (0 < logEvery && 0 == currentPoint.iteration % logEvery) {
+                if (0 < logEvery && (0 == currentPoint.iteration % logEvery || currentPoint.iteration < logEvery)) {
                   val image = currentImage
                   timelineAnimation += image
-                  out.p(out.jpg(image, "Iteration " + currentPoint.iteration))
+                  val caption = "Iteration " + currentPoint.iteration
+                  out.p(caption + "\n" + out.jpg(image, caption))
                 }
                 BasicOptimizer.this.onStepComplete(trainable, currentPoint)
                 trainingMonitor.onStepComplete(currentPoint)
@@ -104,18 +108,12 @@ trait BasicOptimizer extends Logging {
     }(out)
   }
 
-  def renderingNetwork(dims: Seq[Int]): PipelineNetwork = new PipelineNetwork(1)
-
   def onStepComplete(trainable: Trainable, currentPoint: Step) = {
     setPrecision(trainable, Precision.Float)
   }
 
   def onStepFail(trainable: Trainable, currentPoint: Step): Boolean = {
     setPrecision(trainable, Precision.Double)
-  }
-
-  def onComplete()(implicit log: NotebookOutput): Unit = {
-    S3Util.upload(log)
   }
 
   def logEvery = 5
@@ -143,5 +141,9 @@ trait BasicOptimizer extends Logging {
     //      //                  .toArray.map(_.map(_.getIndex).toArray): _*),
     //    )
     new RangeConstraint().setMin(0).setMax(256)
+  }
+
+  def onComplete()(implicit log: NotebookOutput): Unit = {
+    S3Util.upload(log)
   }
 }
