@@ -28,8 +28,8 @@
         <relativePath>../scala-parent</relativePath>
     </parent>
 
-    <artifactId>deepart.studio</artifactId>
-    <description>DeepArt.Studio powered by MindsEye</description>
+    <artifactId>deepartist.org</artifactId>
+    <description>DeepArt Studio powered by MindsEye</description>
     <url>https://simiacryptus.github.io/${github.project}/</url>
 
     <properties>
