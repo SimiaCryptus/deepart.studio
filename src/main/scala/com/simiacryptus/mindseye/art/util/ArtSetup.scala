@@ -67,16 +67,30 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
 
   def upload(log: NotebookOutput)(implicit executionContext: ExecutionContext = ExecutionContext.global) = {
     log.write()
-    for (home <- Option(log.getArchiveHome).filter(!_.toString.isEmpty)) {
-      S3Util.upload(s3client, home, log.getRoot)
+    for (archiveHome <- Option(log.getArchiveHome).filter(!_.toString.isEmpty)) {
+      val localHome = log.getRoot
+      val localName = localHome.getName
+      val archiveName = archiveHome.getPath.stripSuffix("/").split('/').last
+      if(localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
+        S3Util.upload(s3client, archiveHome.resolve(".."), localHome)
+      } else {
+        S3Util.upload(s3client, archiveHome, localHome)
+      }
     }
   }
 
   def uploadAsync(log: NotebookOutput)(implicit executionContext: ExecutionContext = ExecutionContext.global) = {
     log.write()
-    for (home <- Option(log.getArchiveHome).filter(!_.toString.isEmpty)) {
+    for (archiveHome <- Option(log.getArchiveHome).filter(!_.toString.isEmpty)) {
       Future {
-        S3Util.upload(s3client, home, log.getRoot)
+        val localHome = log.getRoot
+        val localName = localHome.getName
+        val archiveName = archiveHome.getPath.stripSuffix("/").split('/').last
+        if(localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
+          S3Util.upload(s3client, archiveHome.resolve(".."), localHome)
+        } else {
+          S3Util.upload(s3client, archiveHome, localHome)
+        }
       }
     }
   }
