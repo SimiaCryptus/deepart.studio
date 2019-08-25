@@ -30,7 +30,7 @@ import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.google.gson.GsonBuilder
 import com.simiacryptus.aws.{EC2Util, S3Util}
-import com.simiacryptus.mindseye.art.registry.{GifRegistration, JobRegistration, JpgRegistration, TaskRegistry}
+import com.simiacryptus.mindseye.art.registry.TaskRegistry
 import com.simiacryptus.mindseye.art.util.ArtUtil.{cyclicalAnimation, load}
 import com.simiacryptus.mindseye.eval.Trainable
 import com.simiacryptus.mindseye.lang.Tensor
@@ -58,6 +58,10 @@ object ArtSetup {
 import com.simiacryptus.mindseye.art.util.ArtSetup._
 
 trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
+
+  override def description: String = super.description
+
+  override def className: String = getClass.getSimpleName.stripSuffix("$")
 
   def s3bucket: String
 
@@ -113,7 +117,15 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
   }
 
   def paintBisection(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: Seq[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, chunks: Int, resolutions: Double*)(implicit sub: NotebookOutput) = {
-    paint(contentUrl, initUrl, canvases, networks, optimizer, resolutions, toBisectionChunks(0 until networks.size, chunks), renderingFn)
+    animate(
+      contentUrl = contentUrl,
+      initUrl = initUrl,
+      canvases = canvases,
+      networks = networks,
+      optimizer = optimizer,
+      resolutions = resolutions,
+      seq = toBisectionChunks(0 until networks.size, chunks),
+      renderingFn = renderingFn)
   }
 
   def toBisectionChunks(seq: Seq[Int], chunks: Int = 1): Seq[Int] = {
@@ -134,18 +146,22 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
   }
 
   def paintOrdered(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: Seq[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, resolutions: Double*)(implicit sub: NotebookOutput) = {
-    paint(contentUrl, initUrl, canvases, networks, optimizer, resolutions, (0 until networks.size), renderingFn)
+    animate(contentUrl, initUrl, canvases, networks, optimizer, resolutions, (0 until networks.size), renderingFn)
   }
 
-  def paint(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: Seq[(String, VisualNetwork)], optimizer: BasicOptimizer, resolutions: Seq[Double], seq: Seq[Int], renderingFn: Seq[Int] => PipelineNetwork)(implicit log: NotebookOutput) = {
+  def animate(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: Seq[(String, VisualNetwork)], optimizer: BasicOptimizer, resolutions: Seq[Double], seq: Seq[Int] = Seq.empty, renderingFn: Seq[Int] => PipelineNetwork = null)(implicit log: NotebookOutput) = {
     for (res <- resolutions) {
       log.h1("Resolution " + res)
       NotebookRunner.withMonitoredGif(() => {
         cyclicalAnimation(canvases.map(_.get()).filter(_ != null).map(tensor => {
-          renderingFn(tensor.getDimensions).eval(tensor).getDataAndFree.getAndFree(0)
+          if (null == renderingFn) {
+            tensor
+          } else {
+            renderingFn(tensor.getDimensions).eval(tensor).getDataAndFree.getAndFree(0)
+          }
         }))
       }) {
-        for (i <- seq) {
+        for (i <- if (seq.isEmpty) (0 until networks.size) else seq) {
           val (name, network) = networks(i)
           log.h2(name)
           val canvas = canvases(i)
@@ -177,7 +193,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
   }
 
   def paint(contentUrl: String, initUrl: String, canvas: AtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Seq[Double], renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1))(implicit log: NotebookOutput): Double = {
-    def prep(res:Double) = {
+    def prep(res: Double) = {
       CudaSettings.INSTANCE().defaultPrecision = network.precision
       var content = ImageArtUtil.load(log, contentUrl, res.toInt)
       val contentTensor = if (null == content) {
@@ -204,7 +220,50 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       ArtUtil.resetPrecision(trainable, network.precision)
       (currentCanvas, trainable)
     }
-    if(resolutions.size == 1) {
+
+    if (resolutions.size == 1) {
+      val (currentCanvas: Tensor, trainable: Trainable) = prep(resolutions.head)
+      optimizer.optimize(optimizer.render(currentCanvas).toRgbImage, trainable)
+    } else {
+      (for (res <- resolutions) yield {
+        log.h1("Resolution " + res)
+        val (currentCanvas: Tensor, trainable: Trainable) = prep(res)
+        optimizer.optimize(currentCanvas, trainable)
+      }).last
+    }
+  }
+
+  def texture(aspectRatio: Double, initUrl: String, canvas: AtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Seq[Double], renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1))(implicit log: NotebookOutput): Double = {
+    def prep(width: Double) = {
+      CudaSettings.INSTANCE().defaultPrecision = network.precision
+      val height = width * aspectRatio
+      var content = ImageArtUtil.load(log, initUrl, width.toInt, height.toInt)
+      val contentTensor = if (null == content) {
+        new Tensor(width.toInt, height.toInt, 3).mapAndFree((x: Double) => FastRandom.INSTANCE.random())
+      } else {
+        Tensor.fromRGB(content)
+      }
+      if (null == content) content = contentTensor.toImage
+      require(null != canvas)
+
+      def updateCanvas(currentCanvas: Tensor) = {
+        if (null == currentCanvas) {
+          load(contentTensor, initUrl)
+        } else {
+          val w = if (null == content) width.toInt else content.getWidth
+          val h = if (null == content) height.toInt else content.getHeight
+          Tensor.fromRGB(ImageUtil.resize(currentCanvas.toRgbImage, w, h))
+        }
+      }
+
+      val currentCanvas: Tensor = updateCanvas(canvas.get())
+      canvas.set(currentCanvas)
+      val trainable = network.apply(currentCanvas, contentTensor)
+      ArtUtil.resetPrecision(trainable, network.precision)
+      (currentCanvas, trainable)
+    }
+
+    if (resolutions.size == 1) {
       val (currentCanvas: Tensor, trainable: Trainable) = prep(resolutions.head)
       optimizer.optimize(optimizer.render(currentCanvas).toRgbImage, trainable)
     } else {

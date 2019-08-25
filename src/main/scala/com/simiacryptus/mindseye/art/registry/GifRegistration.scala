@@ -40,9 +40,10 @@ class GifRegistration
   id: String = UUID.randomUUID().toString,
   indexFile: String = "index.html",
   className: String = "",
+  indexStr: String = "",
   description: String = "",
   delay: Int = 100
-) extends JobRegistration[Seq[BufferedImage]](bucket, reportUrl, liveUrl, canvas, instances, id, indexFile, className, description) {
+) extends JobRegistration[Seq[BufferedImage]](bucket, reportUrl, liveUrl, canvas, instances, id, indexFile, className, indexStr, description) {
 
   def uploadImage(canvas: Seq[BufferedImage])(implicit s3client: AmazonS3) = {
     val key = s"img/$id.gif"

@@ -50,6 +50,7 @@ case class JobRegistry
   image: String,
   id: String,
   className: String,
+  indexStr: String,
   description: String
 ) {
 
