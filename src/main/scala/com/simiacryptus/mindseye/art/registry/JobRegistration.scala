@@ -114,7 +114,7 @@ abstract class JobRegistration[T]
       write(s"$className.html", (jobs.sortBy(-_.lastReport).map(item => toHtml(item))).mkString("\n"))
     }
     write(indexFile, (jobs.mapValues(_.sortBy(-_.lastReport).head).toList.sortBy(_._2.indexStr).map(item =>
-      s"""<h1><a href="${item._1}.html">${item._1}</a></h1>${toHtml(item._2)}""")).mkString("\n"))
+      s"""<h1><a id="${item._1}"></a><a href="${item._1}.html">${item._1}</a></h1>${toHtml(item._2)}""")).mkString("\n"))
   }
 
   def write(indexFile: String, bodyHtml: String)(implicit s3client: AmazonS3) = {
