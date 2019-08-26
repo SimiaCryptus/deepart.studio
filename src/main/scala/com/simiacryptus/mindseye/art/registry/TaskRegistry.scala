@@ -55,7 +55,7 @@ trait TaskRegistry {
     ).start()(s3client, ec2client)) else None
   }
 
-  def registerWithIndexGIF2(canvas: => Seq[Tensor], delay: Int = 100)(implicit log: NotebookOutput) = {
+  def registerWithIndexGIF_Cyclic(canvas: => Seq[Tensor], delay: Int = 100)(implicit log: NotebookOutput) = {
     val archiveHome = log.getArchiveHome
     if (!s3bucket.isEmpty && null != archiveHome) Option(new GifRegistration(
       bucket = s3bucket.split("/").head,
