@@ -38,7 +38,7 @@ trait TaskRegistry {
     val archiveHome = log.getArchiveHome
     if (!s3bucket.isEmpty && null != archiveHome) Option(new GifRegistration(
       bucket = s3bucket.split("/").head,
-      reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getName + ".html",
+      reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getId() + ".html",
       liveUrl = s"http://${EC2Util.publicHostname()}:1080/",
       canvas = () => {
         val list = canvas.filter(_ != null)
@@ -59,7 +59,7 @@ trait TaskRegistry {
     val archiveHome = log.getArchiveHome
     if (!s3bucket.isEmpty && null != archiveHome) Option(new GifRegistration(
       bucket = s3bucket.split("/").head,
-      reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getName + ".html",
+      reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getId() + ".html",
       liveUrl = s"http://${EC2Util.publicHostname()}:1080/",
       canvas = () => {
         val list = canvas.filter(_ != null).map(_.toImage)

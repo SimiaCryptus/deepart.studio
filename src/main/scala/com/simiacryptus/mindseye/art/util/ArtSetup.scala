@@ -130,7 +130,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
   }
 
-  def paintBisection(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: Seq[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, chunks: Int, resolutions: Double*)(implicit sub: NotebookOutput) = {
+  def paintEveryOther(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, resolutions: Double*)(implicit sub: NotebookOutput) = {
     animate(
       contentUrl = contentUrl,
       initUrl = initUrl,
@@ -138,32 +138,25 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       networks = networks,
       optimizer = optimizer,
       resolutions = resolutions,
-      seq = toBisectionChunks(0 until networks.size, chunks),
+      seq = binaryFill((0 until networks.size).toList),
       renderingFn = renderingFn)
   }
 
-  def toBisectionChunks(seq: Seq[Int], chunks: Int = 1): Seq[Int] = {
-    def middleFirst(seq: Seq[Int]): Seq[Int] = {
-      if (seq.isEmpty) seq
-      else {
-        val leftNum = (seq.size.toDouble / 2).floor.toInt
-        val rightNum = (seq.size.toDouble / 2).ceil.toInt - 1
-        seq.drop(leftNum).dropRight(rightNum) ++ middleFirst(seq.take(leftNum)) ++ middleFirst(seq.takeRight(rightNum))
-      }
-    }
-
+  def binaryFill(seq: List[Int]): List[Int] = {
     if (seq.size < 3) seq
     else {
-      val thisChunk = ((seq.size - (chunks + 1)) / chunks).ceil.toInt
-      seq.take(1) ++ toBisectionChunks(seq.drop(1 + thisChunk), chunks - 1) ++ middleFirst(seq.drop(1).take(thisChunk))
+      val a = seq.take(1)
+      val b = seq.drop(1).take(1)
+      val c = seq.drop(2)
+      a ++ binaryFill(c) ++ b
     }
   }
 
-  def paintOrdered(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: Seq[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, resolutions: Double*)(implicit sub: NotebookOutput) = {
-    animate(contentUrl, initUrl, canvases, networks, optimizer, resolutions, (0 until networks.size), renderingFn)
+  def paintOrdered(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, resolutions: Double*)(implicit sub: NotebookOutput) = {
+    animate(contentUrl, initUrl, canvases, networks, optimizer, resolutions, (0 until networks.size).toList, renderingFn)
   }
 
-  def animate(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: Seq[(String, VisualNetwork)], optimizer: BasicOptimizer, resolutions: Seq[Double], seq: Seq[Int] = Seq.empty, renderingFn: Seq[Int] => PipelineNetwork = null)(implicit log: NotebookOutput) = {
+  def animate(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, resolutions: Seq[Double], seq: List[Int] = List.empty, renderingFn: Seq[Int] => PipelineNetwork = null)(implicit log: NotebookOutput) = {
     for (res <- resolutions) {
       log.h1("Resolution " + res)
       NotebookRunner.withMonitoredGif(() => {
