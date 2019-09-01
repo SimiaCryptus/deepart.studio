@@ -131,15 +131,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
   }
 
   def paintEveryOther(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, resolutions: Double*)(implicit sub: NotebookOutput) = {
-    animate(
-      contentUrl = contentUrl,
-      initUrl = initUrl,
-      canvases = canvases,
-      networks = networks,
-      optimizer = optimizer,
-      resolutions = resolutions,
-      seq = binaryFill((0 until networks.size).toList),
-      renderingFn = renderingFn)
+    animate(contentUrl = contentUrl, initUrl = initUrl, canvases = canvases, networks = networks, optimizer = optimizer, resolutions = resolutions, seq = binaryFill((0 until networks.size).toList), renderingFn = renderingFn, delay = 100)
   }
 
   def binaryFill(seq: List[Int]): List[Int] = {
@@ -153,10 +145,10 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
   }
 
   def paintOrdered(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, resolutions: Double*)(implicit sub: NotebookOutput) = {
-    animate(contentUrl, initUrl, canvases, networks, optimizer, resolutions, (0 until networks.size).toList, renderingFn)
+    animate(contentUrl, initUrl, canvases, networks, optimizer, resolutions, (0 until networks.size).toList, renderingFn, delay = 100)
   }
 
-  def animate(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, resolutions: Seq[Double], seq: List[Int] = List.empty, renderingFn: Seq[Int] => PipelineNetwork = null)(implicit log: NotebookOutput) = {
+  def animate(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, resolutions: Seq[Double], seq: List[Int] = List.empty, renderingFn: Seq[Int] => PipelineNetwork = null, delay: Int = 100)(implicit log: NotebookOutput) = {
     for (res <- resolutions) {
       log.h1("Resolution " + res)
       NotebookRunner.withMonitoredGif(() => {
@@ -167,7 +159,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
             renderingFn(tensor.getDimensions).eval(tensor).getDataAndFree.getAndFree(0)
           }
         }))
-      }) {
+      }, delay = delay) {
         for (i <- if (seq.isEmpty) (0 until networks.size) else seq) {
           val (name, network) = networks(i)
           log.h2(name)
