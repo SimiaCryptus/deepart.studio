@@ -1,24 +1,22 @@
 # DeepArtist.org
 
 ## What is it?
-DeepArtist.org is an image processing platform using convolutional neural networks to perform state-of-the-art image processing techniques. This software is targeted at hobbyists and digital artists, and as such this documentation is focused on the practical tools provided to produce pretty pictures. To run locally you need a recent Nvidia GPU, but you can also run these tasks on Amazon EC2.
+[DeepArtist.org](examples.deepartist.org) is an image processing platform using convolutional neural networks to perform state-of-the-art image processing techniques. This software is targeted at hobbyists and digital artists, and as such this documentation is focused on the practical tools provided to produce pretty pictures. To run locally you need a recent [Nvidia GPU](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html#prerequisites-windows), but you can also run these tasks on [Amazon EC2](https://aws.amazon.com/machine-learning/amis/).
 
 In contrast to many contemporary AI projects, this project uses Scala, not Python. I have attempted to simplify things so that very little programming literacy at all is required, and the learning curve is friendly to beginners who want to experiment. One benefit of this approach is that this software runs easily on a variety of systems, including Windows and Mac desktops and on the Cloud.
 
 As you will quickly discover, these painting processes have many controls and settings and can be customized in countless ways. Getting an ideal image result may require quite a bit of experimentation, and you will need a way to track this work. Additionally, you may develop new artistic pipelines, and you may wish to share them. To support these types of workflows, DeepArtist applications output rich text and images as output and have them automatically built into a static website on s3.
 
-Part of the release of DeepArtist.org is Examples.DeepArtist.org - A set of starting applications that use the platform to demonstrate the basis image processing techniques and concepts.
+A key part of DeepArtist.org are [the examples](examples.deepartist.org) - A set of starting applications that use the platform to demonstrate the basis image processing techniques and concepts.
 
 # How to Install and Run
 
-## Install Git, Java, and an IDE (e.g. IntelliJ)
+## Development Tools
 
-First, there are some basic tools needed to run software.
+First, there are some basic tools needed to run this software:
 
 1. [Java](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) - You probably have some version of Java, but you will need to install a Java Development Kit so you can compile and run the code. There are several distributions of JDK, many freely available. I use Oracle’s JDK 8.
-  
 1. [Git](https://git-scm.com/downloads) - Several friendly distributions and interface wrappers exist for Git, but I prefer the basic command line. You can probably get away without this if you use the IntelliJ git plugin.
-
 1. [IntelliJ](https://www.jetbrains.com/idea/download/#section=windows) - You don’t technically need a fancy development environment, but this is free and well worth this disk space. IntelliJ provides a “community edition” which has basically all the Java features you will need to run this software and develop with it. I used the free version to develop almost all of this software.
 
 ## Github
@@ -52,7 +50,7 @@ Now that the basics are setup, we will download and load the examples project on
 ## Run a local demo - BasicNotebook
 We are now ready to run our first project. To simplify things, let’s run a very basic project that doesn’t use any neural networks. Open the examples project and then open the BasicNotebook class.
 
-1. Open class and “run” - Right click the file and choose “run”
+1. Open class and "run" - Right click the file and choose "run"
 1. Load page, confirm configuration - Open a browser to [http://localhost:1080/](http://localhost:1080/). The initial page will prompt the user to edit the settings of the job. You can edit the text to be rendered, the size, the target s3 bucket, and many other settings in other jobs
 1. Refresh and upload image - Assuming the content url was left intact, the job will (upon refreshing the page) prompt you to upload an image. Upload one.
 1. Wait for completion - One the upload completes, the job runs. This job is fast and will complete in seconds.
@@ -60,7 +58,7 @@ We are now ready to run our first project. To simplify things, let’s run a ver
 
 [![](http://examples.deepartist.org/img/834f07ce-180b-48a9-bdc6-81160e904ce5.jpg)](http://examples.deepartist.org/BasicNotebookEC2/9233c16d-691b-4955-9c57-8e95cd641551/9233c16d-691b-4955-9c57-8e95cd641551.html)
 
-From here, see and run more involved jobs from http://examples.deepart.com.
+From here, see and run more involved jobs from [examples.deepart.org](http://examples.deepart.org).
 
 # Advanced Operation
 
@@ -94,7 +92,7 @@ Once an application is running, there are several other pages that can be reques
 This software is built on top of other software and technology.
 
 ## Software Technologies:
-1. [CuDNN](https://developer.nvidia.com/cudnn)and CUDA - Nvidia publishes many useful number-crunching libraries that take advantage of the parallel computing abilities of its GPUs. CuDNN in particular is the prefered acceleration library used by deepartist.org.   
+1. [CuDNN](https://developer.nvidia.com/cudnn) and CUDA - Nvidia publishes many useful number-crunching libraries that take advantage of the parallel computing abilities of its GPUs. CuDNN in particular is the prefered acceleration library used by deepartist.org.   
 1. [TensorFlow](https://www.tensorflow.org/) - Google’s AI research team has open-sourced Tensorflow, a portable runtime for expressing and running neural networks. This library can be used for importing vision pipelines into DeepArtist.org, such as the pre-packaged Inception model.
 1. Java and [Scala](https://www.scala-lang.org/) - Java is arguably the most popular programming environment today. Scala runs within the Java environment as an alternate language, and is one of the most expressive languages available. Both have a host of free, world-class tools available.
 
