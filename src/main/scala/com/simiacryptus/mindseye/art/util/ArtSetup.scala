@@ -71,7 +71,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       val localHome = log.getRoot
       val localName = localHome.getName
       val archiveName = archiveHome.getPath.stripSuffix("/").split('/').last
-      if(localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
+      if (localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
         S3Util.upload(s3client, archiveHome.resolve(".."), localHome)
       } else {
         S3Util.upload(s3client, archiveHome, localHome)
@@ -86,7 +86,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
         val localHome = log.getRoot
         val localName = localHome.getName
         val archiveName = archiveHome.getPath.stripSuffix("/").split('/').last
-        if(localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
+        if (localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
           S3Util.upload(s3client, archiveHome.resolve(".."), localHome)
         } else {
           S3Util.upload(s3client, archiveHome, localHome)
