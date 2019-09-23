@@ -188,10 +188,10 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
   }
 
   def paint(contentUrl: String, initUrl: String, canvas: AtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Double*)(implicit sub: NotebookOutput): Double = {
-    paint(contentUrl, initUrl, canvas, network, optimizer, resolutions)
+    paint(contentUrl, load(_, initUrl), canvas, network, optimizer, resolutions)
   }
 
-  def paint(contentUrl: String, initUrl: String, canvas: AtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Seq[Double], renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1))(implicit log: NotebookOutput): Double = {
+  def paint(contentUrl: String, initFn: Tensor => Tensor, canvas: AtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Seq[Double], renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1))(implicit log: NotebookOutput): Double = {
     def prep(res: Double) = {
       CudaSettings.INSTANCE().defaultPrecision = network.precision
       var content = ImageArtUtil.load(log, contentUrl, res.toInt)
@@ -205,7 +205,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
 
       def updateCanvas(currentCanvas: Tensor) = {
         if (null == currentCanvas) {
-          load(contentTensor, initUrl)
+          initFn(contentTensor)
         } else {
           val width = if (null == content) res.toInt else content.getWidth
           val height = if (null == content) res.toInt else content.getHeight
