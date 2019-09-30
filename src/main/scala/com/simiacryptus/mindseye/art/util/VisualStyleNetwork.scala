@@ -97,7 +97,7 @@ object VisualStyleNetwork {
         |            |negro-attacked-by-a-jaguar-1910.jpg!Large.jpg
         |            |design-for-tulip-and-willow-indigo-discharge-wood-block-printed-fabric-1873.jpg!Large.jpg
         |            |job-1896.jpg!Large.jpg
-        |            |spring-motif-view-from-stone-island-to-krestovsky-and-yelagin-islands-1904.jpg!Large.jpg
+        |            |spring-motif-view-from-stone-island-to-krestovsky-and-yelagin-regions-1904.jpg!Large.jpg
         |            |girl-with-a-rose-in-her-lap-1960.jpg!Large.jpg
         |            |untitled-1949.jpg!Large.jpg
         |            |the-dragon.jpg!Large.jpg
