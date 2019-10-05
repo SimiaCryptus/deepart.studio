@@ -41,6 +41,8 @@ object Permutation {
     }).flatMap(_.permutations).map(Permutation(_: _*))
   }
 
+  def apply(indices: Int*) = new Permutation(indices.toArray)
+
   def roots_whole(rank: Int, power: Int) = Random.shuffle(rings(rank)(power).flatten.toList)
 
   def roots_factor(rank: Int, power: Int) = Random.shuffle(rings(rank).filter(t => power % t._1 == 0).map(_._2).flatten.flatten.toList)
@@ -48,8 +50,6 @@ object Permutation {
   def random(rank: Int, power: Int) = roots_whole(rank, power).headOption.getOrElse(roots_factor(rank, power).head).indices
 
   def unity(n: Int) = Permutation((1 to n).toArray: _*)
-
-  def apply(indices: Int*) = new Permutation(indices.toArray)
 }
 
 class Permutation(val indices: Array[Int]) {

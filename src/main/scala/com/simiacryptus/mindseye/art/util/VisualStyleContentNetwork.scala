@@ -53,9 +53,55 @@ case class VisualStyleContentNetwork
   def apply(canvas: Tensor, content: Tensor): Trainable = {
     val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas))
     val styleModifier = styleModifiers.reduceOption(_ combine _).getOrElse(new VisualModifier {
-      override def build(network: PipelineNetwork, image: Tensor*): PipelineNetwork = new PipelineNetwork(1)
+      override def build(network: PipelineNetwork, content: Tensor, style: Tensor*): PipelineNetwork = new PipelineNetwork(1)
     })
     val contentModifier = contentModifiers.reduce(_ combine _)
+    if (styleModifier.withMask()) {
+      trainable_tiledStyle(canvas, content, loadedImages, styleModifier, contentModifier)
+    } else {
+      trainable_sharedStyle(canvas, content, loadedImages, styleModifier, contentModifier)
+    }
+  }
+
+  def trainable_tiledStyle(canvas: Tensor, content: Tensor, loadedImages: Array[Tensor], styleModifier: VisualModifier, contentModifier: VisualModifier) = {
+    val grouped: Array[String] = ((contentLayers.map(_.getPipelineName -> null) ++ styleLayers.groupBy(_.getPipelineName).toList).map(_._1).distinct).toArray
+    if (content.getDimensions().toList != canvas.getDimensions.toList) {
+      val msg = s"""${content.getDimensions().toList} != ${canvas.getDimensions.toList}"""
+      throw new IllegalArgumentException(msg)
+    }
+    val resView = viewLayer(content.getDimensions())
+    val contentView = if (prefilterContent) resView.eval(content).getDataAndFree.getAndFree(0) else content
+    new SumTrainable(grouped.map(name => {
+      new TiledTrainable(canvas, resView, tileSize, tilePadding, precision) {
+        override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
+          val selection = regionSelector.eval(contentView).getDataAndFree.getAndFree(0)
+          regionSelector.freeRef()
+          MultiPrecision.setPrecision(SumInputsLayer.combine({
+            contentLayers.filter(x => x.getPipelineName == name)
+              .map(contentLayer => {
+                val network = contentModifier.build(contentLayer, selection)
+                network.wrap(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer"))
+                network
+              }) ++ styleLayers.filter(x => x.getPipelineName == name)
+              .map(contentLayer => {
+                val network: PipelineNetwork = styleModifier.build(contentLayer.getNetwork, selection, loadedImages.map(_.addRef()): _*)
+                network.wrap(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer"))
+                network
+              })
+
+          }: _*
+          ), precision)
+        }
+
+        override protected def _free(): Unit = {
+          super._free()
+          loadedImages.foreach(_.freeRef())
+        }
+      }
+    }).toArray: _*)
+  }
+
+  def trainable_sharedStyle(canvas: Tensor, content: Tensor, loadedImages: Array[Tensor], styleModifier: VisualModifier, contentModifier: VisualModifier) = {
     val grouped: Map[String, PipelineNetwork] = ((contentLayers.map(_.getPipelineName -> null) ++ styleLayers.groupBy(_.getPipelineName).toList).groupBy(_._1).mapValues(pipelineLayers => {
       val layers = pipelineLayers.flatMap(x => Option(x._2).toList.flatten)
       if (layers.isEmpty) null
