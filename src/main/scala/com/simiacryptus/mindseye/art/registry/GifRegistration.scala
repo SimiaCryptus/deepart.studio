@@ -50,7 +50,7 @@ class GifRegistration
     logger.info("Writing " + key)
     val metadata = new ObjectMetadata()
     val stream = new ByteArrayOutputStream()
-    NotebookRunner.toGif(stream, canvas, delay)
+    NotebookRunner.toGif(stream, canvas, delay, 1200)
     metadata.setContentType("image/gif")
     s3client.putObject(new PutObjectRequest(bucket, key, new ByteArrayInputStream(stream.toByteArray), metadata)
       .withCannedAcl(CannedAccessControlList.PublicRead))
