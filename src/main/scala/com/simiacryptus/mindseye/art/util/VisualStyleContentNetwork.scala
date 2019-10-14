@@ -53,7 +53,7 @@ case class VisualStyleContentNetwork
   def apply(canvas: Tensor, content: Tensor): Trainable = {
     val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas))
     val styleModifier = styleModifiers.reduceOption(_ combine _).getOrElse(new VisualModifier {
-      override def build(network: PipelineNetwork, content: Tensor, style: Tensor*): PipelineNetwork = new PipelineNetwork(1)
+      override def build(network: PipelineNetwork, content: Tensor, style: Array[Tensor]): PipelineNetwork = new PipelineNetwork(1)
     })
     val contentModifier = contentModifiers.reduce(_ combine _)
     if (styleModifier.withMask()) {
@@ -71,7 +71,7 @@ case class VisualStyleContentNetwork
     }
     val resView = viewLayer(content.getDimensions())
     val contentView = if (prefilterContent) resView.eval(content).getDataAndFree.getAndFree(0) else content
-    new SumTrainable(grouped.map(name => {
+    val trainable = new SumTrainable(grouped.map(name => {
       new TiledTrainable(canvas, resView, tileSize, tilePadding, precision) {
         override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
           val selection = regionSelector.eval(contentView).getDataAndFree.getAndFree(0)
@@ -79,18 +79,21 @@ case class VisualStyleContentNetwork
           MultiPrecision.setPrecision(SumInputsLayer.combine({
             contentLayers.filter(x => x.getPipelineName == name)
               .map(contentLayer => {
-                val network = contentModifier.build(contentLayer, selection)
-                network.wrap(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer"))
+                val network = contentModifier.build(contentLayer, selection, Array[Tensor](selection))
+                network.wrap(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer")).freeRef()
                 network
-              }) ++ styleLayers.filter(x => x.getPipelineName == name)
-              .map(contentLayer => {
-                val network: PipelineNetwork = styleModifier.build(contentLayer.getNetwork, selection, loadedImages.map(_.addRef()): _*)
-                network.wrap(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer"))
-                network
-              })
-
-          }: _*
-          ), precision)
+              }) ++ styleLayers.filter(x => x.getPipelineName == name).map(contentLayer => {
+              val contentNetwork = contentLayer.getNetwork
+              val network: PipelineNetwork = styleModifier.build(
+                contentNetwork,
+                selection,
+                loadedImages.map(_.addRef())
+              )
+              contentNetwork.freeRef()
+              network.wrap(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer")).freeRef()
+              network
+            })
+          }: _*), precision)
         }
 
         override protected def _free(): Unit = {
@@ -99,7 +102,11 @@ case class VisualStyleContentNetwork
         }
       }
     }).toArray: _*)
+    resView.freeRef()
+    trainable
   }
+
+  def prefilterContent = false
 
   def trainable_sharedStyle(canvas: Tensor, content: Tensor, loadedImages: Array[Tensor], styleModifier: VisualModifier, contentModifier: VisualModifier) = {
     val grouped: Map[String, PipelineNetwork] = ((contentLayers.map(_.getPipelineName -> null) ++ styleLayers.groupBy(_.getPipelineName).toList).groupBy(_._1).mapValues(pipelineLayers => {
@@ -107,7 +114,7 @@ case class VisualStyleContentNetwork
       if (layers.isEmpty) null
       else SumInputsLayer.combine(layers.map(styleLayer => {
         val network = styleModifier.build(styleLayer, loadedImages.map(_.addRef()): _*)
-        network.wrap(new AssertDimensionsLayer(1).setName(s"$styleModifier - $styleLayer"))
+        network.wrap(new AssertDimensionsLayer(1).setName(s"$styleModifier - $styleLayer")).freeRef()
         network
       }): _*)
     })).toArray.map(identity).toMap
@@ -128,7 +135,7 @@ case class VisualStyleContentNetwork
             Option(styleNetwork).map(_.addRef()).toList ++ contentLayers.filter(x => x.getPipelineName == name)
               .map(contentLayer => {
                 val network = contentModifier.build(contentLayer, selection)
-                network.wrap(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer"))
+                network.wrap(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer")).freeRef()
                 network
               })
           }: _*
@@ -142,7 +149,5 @@ case class VisualStyleContentNetwork
       }
     }).toArray: _*)
   }
-
-  def prefilterContent = false
 
 }

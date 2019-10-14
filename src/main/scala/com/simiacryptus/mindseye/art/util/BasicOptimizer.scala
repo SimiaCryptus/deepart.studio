@@ -62,7 +62,10 @@ trait BasicOptimizer extends Logging {
   }
 
   def render(canvasImage: Tensor) = {
-    renderingNetwork(canvasImage.getDimensions).eval(canvasImage).getDataAndFree.getAndFree(0)
+    val network = renderingNetwork(canvasImage.getDimensions)
+    val tensor = network.eval(canvasImage).getDataAndFree.getAndFree(0)
+    network.freeRef()
+    tensor
   }
 
   def renderingNetwork(dims: Seq[Int]): PipelineNetwork = new PipelineNetwork(1)
