@@ -156,7 +156,7 @@ object ArtUtil {
 
   def colorTransfer(contentImage: Tensor, styleImages: Seq[Tensor], tileSize: Int, tilePadding: Int, precision: Precision, colorAdjustmentLayer: PipelineNetwork): Layer = {
     def styleMatcher = new GramMatrixMatcher() //.combine(new ChannelMeanMatcher().scale(1e0))
-    val styleNetwork = MultiPrecision.setPrecision(styleMatcher.build(styleImages: _*), precision).asInstanceOf[PipelineNetwork]
+    val styleNetwork = MultiPrecision.setPrecision(styleMatcher.build(VisionPipelineLayer.NOOP, null, null, styleImages: _*), precision).asInstanceOf[PipelineNetwork]
     val trainable_color = new TiledTrainable(contentImage, colorAdjustmentLayer, tileSize, tilePadding, precision) {
       override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
         regionSelector.freeRef()
