@@ -52,7 +52,7 @@ We are now ready to run our first project. To simplify things, let’s run a ver
 
 1. Open class and "run" - Right click the file and choose "run"
 1. Load page, confirm configuration - Open a browser to [http://localhost:1080/](http://localhost:1080/). The initial page will prompt the user to edit the settings of the job. You can edit the text to be rendered, the size, the target s3 bucket, and many other settings in other jobs
-1. Refresh and upload image - Assuming the content url was left intact, the job will (upon refreshing the page) prompt you to upload an image. Upload one.
+1. Refresh and upload image - Assuming the mask url was left intact, the job will (upon refreshing the page) prompt you to upload an image. Upload one.
 1. Wait for completion - One the upload completes, the job runs. This job is fast and will complete in seconds.
 1. Examine results - The results will have been saved in a local /reports/ directory that is noted in the output logs, and if setup also on S3.
 

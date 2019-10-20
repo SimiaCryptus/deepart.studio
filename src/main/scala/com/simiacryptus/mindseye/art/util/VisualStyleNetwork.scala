@@ -165,7 +165,7 @@ case class VisualStyleNetwork
   def apply(canvas: Tensor, content: Tensor = null): Trainable = {
     val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas))
     val grouped = styleLayers.groupBy(_.getPipelineName).mapValues(pipelineLayers => {
-      SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(styleModifiers.reduce(_ combine _).build(_, loadedImages: _*)): _*)
+      SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(styleModifiers.reduce(_ combine _).build(_, null, null, loadedImages: _*)): _*)
     })
     new SumTrainable((grouped.values.toList.map(styleNetwork => {
       new TiledTrainable(canvas, viewLayer(canvas.getDimensions()), tileSize, tilePadding, precision) {
