@@ -76,43 +76,11 @@ case class VisualStyleContentNetwork
     val resView = viewLayer(contentDims)
     val contentView: Tensor = if (prefilterContent) resView.eval(content).getDataAndFree.getAndFree(0) else content
     val trainable = new SumTrainable(grouped.map(name => {
-      new TileTrainer(canvas, loadedImages, contentDims, resView, contentView, name, styleModifier, contentModifier)
+      new TileTrainer(canvas, loadedImages.map(_.addRef()), contentDims, resView, contentView, name, styleModifier, contentModifier)
     }).toArray: _*)
+    loadedImages.foreach(_.freeRef())
     resView.freeRef()
     trainable
-  }
-
-  class TileTrainer
-  (
-    canvas: Tensor,
-    loadedImages: Array[Tensor],
-    contentDims: Array[Int],
-    resView: Layer,
-    contentView: Tensor,
-    name: String,
-    styleModifier: VisualModifier,
-    contentModifier: VisualModifier
-  ) extends TiledTrainable(canvas, resView, tileSize, tilePadding, precision) {
-    override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
-      try {
-        val regionFn = regionSelector.asTensorFunction()
-        val contentRegion = regionSelector.eval(contentView).getDataAndFree.getAndFree(0)
-        MultiPrecision.setPrecision(SumInputsLayer.combine({
-          contentLayers.filter(x => x.getPipelineName == name).map(contentLayer => {
-            contentModifier.build(contentLayer, contentDims, regionFn, contentRegion)
-          }) ++ styleLayers.filter(x => x.getPipelineName == name).map(styleLayer => {
-            styleModifier.build(styleLayer, contentDims, regionFn, loadedImages: _*)
-          })
-        }: _*), precision)
-      } finally {
-        regionSelector.freeRef()
-      }
-    }
-
-    override protected def _free(): Unit = {
-      loadedImages.foreach(_.freeRef())
-      super._free()
-    }
   }
 
   def prefilterContent = false
@@ -159,6 +127,39 @@ case class VisualStyleContentNetwork
         }
       }
     }).toArray: _*)
+  }
+
+  class TileTrainer
+  (
+    canvas: Tensor,
+    loadedImages: Array[Tensor],
+    contentDims: Array[Int],
+    resView: Layer,
+    contentView: Tensor,
+    name: String,
+    styleModifier: VisualModifier,
+    contentModifier: VisualModifier
+  ) extends TiledTrainable(canvas, resView, tileSize, tilePadding, precision) {
+    override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
+      try {
+        val regionFn = regionSelector.asTensorFunction()
+        val contentRegion = regionSelector.eval(contentView).getDataAndFree.getAndFree(0)
+        MultiPrecision.setPrecision(SumInputsLayer.combine({
+          contentLayers.filter(x => x.getPipelineName == name).map(contentLayer => {
+            contentModifier.build(contentLayer, contentDims, regionFn, contentRegion)
+          }) ++ styleLayers.filter(x => x.getPipelineName == name).map(styleLayer => {
+            styleModifier.build(styleLayer, contentDims, regionFn, loadedImages: _*)
+          })
+        }: _*), precision)
+      } finally {
+        regionSelector.freeRef()
+      }
+    }
+
+    override protected def _free(): Unit = {
+      loadedImages.foreach(_.freeRef())
+      super._free()
+    }
   }
 
 }
