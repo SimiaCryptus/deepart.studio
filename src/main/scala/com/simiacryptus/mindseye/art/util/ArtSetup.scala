@@ -72,9 +72,9 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       val localName = localHome.getName
       val archiveName = archiveHome.getPath.stripSuffix("/").split('/').last
       if (localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
-        S3Util.upload(s3client, archiveHome.resolve(".."), localHome)
+        if (s3bucket != null) S3Util.upload(s3client, archiveHome.resolve(".."), localHome)
       } else {
-        S3Util.upload(s3client, archiveHome, localHome)
+        if (s3bucket != null) S3Util.upload(s3client, archiveHome, localHome)
       }
     }
   }
@@ -97,6 +97,10 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
 
   def getPaintingsBySearch(searchWord: String, minWidth: Int): Array[String] = {
     getPaintings(new URI("https://www.wikiart.org/en/search/" + URLEncoder.encode(searchWord, "UTF-8").replaceAllLiterally("+", "%20") + "/1?json=2"), minWidth, 100)
+  }
+
+  def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
+    getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
   }
 
   def getPaintings(uri: URI, minWidth: Int, maxResults: Int): Array[String] = {
@@ -124,10 +128,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
             ""
         }
       }).filterNot(_.isEmpty).toArray
-  }
-
-  def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
-    getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
   }
 
   def paintEveryOther(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, resolutions: Double*)(implicit sub: NotebookOutput) = {

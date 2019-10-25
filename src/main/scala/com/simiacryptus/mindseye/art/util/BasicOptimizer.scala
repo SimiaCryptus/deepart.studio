@@ -46,6 +46,7 @@ trait BasicOptimizer extends Logging {
   def optimize(canvasImage: Tensor, trainable: Trainable)(implicit log: NotebookOutput): Double = {
     try {
       def currentImage = render(canvasImage).toRgbImage
+
       withMonitoredJpg[Double](() => currentImage) {
         log.subreport("Optimization", (sub: NotebookOutput) => {
           optimize(currentImage, trainable)(sub).asInstanceOf[java.lang.Double]
