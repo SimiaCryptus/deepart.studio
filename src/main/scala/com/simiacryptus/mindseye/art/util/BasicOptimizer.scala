@@ -82,7 +82,10 @@ trait BasicOptimizer extends Logging {
             .setMonitor(new TrainingMonitor() {
               override def clear(): Unit = trainingMonitor.clear()
 
-              override def log(msg: String): Unit = trainingMonitor.log(msg)
+              override def log(msg: String): Unit = {
+                trainingMonitor.log(msg)
+                BasicOptimizer.this.log(msg)
+              }
 
               override def onStepFail(currentPoint: Step): Boolean = {
                 BasicOptimizer.this.onStepFail(trainable, currentPoint)
@@ -110,6 +113,8 @@ trait BasicOptimizer extends Logging {
       })(out)
     }(out)
   }
+
+  def log(msg: String): Unit = {}
 
   def onStepComplete(trainable: Trainable, currentPoint: Step) = {
     setPrecision(trainable, Precision.Float)

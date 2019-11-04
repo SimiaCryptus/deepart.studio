@@ -48,7 +48,7 @@ case class VisualStyleContentNetwork
   override val maxWidth: Int = 2048,
   override val maxPixels: Double = 5e6,
   override val magnification: Double = 1.0
-)(implicit val log: NotebookOutput) extends ImageSource(styleUrl) with VisualNetwork {
+)(implicit override val log: NotebookOutput) extends ImageSource(styleUrl) with VisualNetwork {
 
   def apply(canvas: Tensor, content: Tensor): Trainable = {
     val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas))
