@@ -25,12 +25,12 @@ import com.simiacryptus.notebook.NotebookOutput
 
 import scala.util.Random
 
-class ImageSource(urls: Seq[String]) {
+class ImageSource(urls: Seq[String])(implicit val log: NotebookOutput) {
   def tileSize: Int = 400
 
   def tilePadding: Int = 16
 
-  def loadImages(canvasPixels: Int)(implicit log: NotebookOutput): Array[Tensor] = {
+  def loadImages(canvasPixels: Int): Array[Tensor] = {
     val styles = Random.shuffle(urls.toList).map(styleUrl => {
       var styleImage = ImageArtUtil.load(log, styleUrl, -1)
       val stylePixels = styleImage.getWidth * styleImage.getHeight
