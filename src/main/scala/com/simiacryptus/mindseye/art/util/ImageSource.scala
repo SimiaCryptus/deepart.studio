@@ -40,7 +40,9 @@ class ImageSource(urls: Seq[String])(implicit val log: NotebookOutput) {
       val resized = ImageUtil.resize(styleImage, finalWidth, true)
       Tensor.fromRGB(resized)
     }).toBuffer
+    require(!styles.isEmpty)
     while (styles.map(_.getDimensions).map(d => d(0) * d(1)).sum > maxPixels) styles.remove(0)
+    require(!styles.isEmpty)
     styles.toArray
   }
 
@@ -48,7 +50,7 @@ class ImageSource(urls: Seq[String])(implicit val log: NotebookOutput) {
 
   def maxWidth: Int = 2048
 
-  def maxPixels: Double = 5e6
+  def maxPixels: Double = 5e7
 
   def magnification: Double = 1.0
 

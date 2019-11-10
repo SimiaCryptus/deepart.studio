@@ -46,7 +46,7 @@ case class VisualStyleContentNetwork
   override val tilePadding: Int = 64,
   override val minWidth: Int = 1,
   override val maxWidth: Int = 2048,
-  override val maxPixels: Double = 5e6,
+  override val maxPixels: Double = 5e7,
   override val magnification: Double = 1.0
 )(implicit override val log: NotebookOutput) extends ImageSource(styleUrl) with VisualNetwork {
 
@@ -67,6 +67,7 @@ case class VisualStyleContentNetwork
   }
 
   def trainable_tiledStyle(canvas: Tensor, content: Tensor, loadedImages: Array[Tensor], styleModifier: VisualModifier, contentModifier: VisualModifier) = {
+    require(!loadedImages.isEmpty)
     val grouped: Array[String] = ((contentLayers.map(_.getPipelineName -> null) ++ styleLayers.groupBy(_.getPipelineName).toList).map(_._1).distinct).toArray
     val contentDims = content.getDimensions()
     if (contentDims.toList != canvas.getDimensions.toList) {
