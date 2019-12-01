@@ -19,12 +19,12 @@
 
 package com.simiacryptus.mindseye.art.util
 
-import com.simiacryptus.lang.ref.ReferenceCountingBase
 import com.simiacryptus.mindseye.art.SumTrainable
 import com.simiacryptus.mindseye.eval.Trainable
 import com.simiacryptus.mindseye.lang.cudnn.Precision
 import com.simiacryptus.mindseye.lang.{Layer, PointSample, Tensor}
 import com.simiacryptus.mindseye.opt.TrainingMonitor
+import com.simiacryptus.ref.lang.ReferenceCountingBase
 
 trait VisualNetwork {
   def precision: Precision
