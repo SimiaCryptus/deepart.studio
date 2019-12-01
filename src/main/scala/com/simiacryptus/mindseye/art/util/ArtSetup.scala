@@ -67,7 +67,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
 
   def upload(log: NotebookOutput)(implicit executionContext: ExecutionContext = ExecutionContext.global) = {
     log.write()
-    for (archiveHome <- Option(log.getArchiveHome).filter(!_.toString.isEmpty)) {
+    if(!s3bucket.isEmpty) for (archiveHome <- Option(log.getArchiveHome).filter(!_.toString.isEmpty)) {
       val localHome = log.getRoot
       val localName = localHome.getName
       val archiveName = archiveHome.getPath.stripSuffix("/").split('/').last
