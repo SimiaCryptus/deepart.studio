@@ -2,6 +2,7 @@
 # Avoid ignoring Maven wrapper jar file (.jar files are usually ignored)
 buildNumber.properties
 dependency-reduced-pom.xml
+.idea/
 .mvn/timing.properties
 !/.mvn/wrapper/maven-wrapper.jar
 pom.xml.next
