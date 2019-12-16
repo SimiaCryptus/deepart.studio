@@ -1,6 +1,7 @@
 
 # Avoid ignoring Maven wrapper jar file (.jar files are usually ignored)
 buildNumber.properties
+deepartist.org.iml deepart.studio.iml
 dependency-reduced-pom.xml
 .idea/
 .mvn/timing.properties
