@@ -36,14 +36,14 @@ abstract class RotorArt
     network.add(new SumInputsLayer(), (0 until rotationalSegments)
       .map(segment => {
         if (0 == segment) network.getInput(0) else {
-          network.wrap(
+          network.add(
             getRotor(segment * 2 * Math.PI / rotationalSegments, canvasDims).setChannelSelector((permutation ^ segment).indices: _*),
             network.getInput(0)
           )
         }
       }): _*).freeRef()
-    network.wrap(new LinearActivationLayer().setScale(1.0 / rotationalSegments).freeze()).freeRef()
-    network.wrap(new BoundedActivationLayer().setMinValue(0).setMaxValue(255).freeze()).freeRef()
+    network.add(new LinearActivationLayer().setScale(1.0 / rotationalSegments).freeze()).freeRef()
+    network.add(new BoundedActivationLayer().setMinValue(0).setMaxValue(255).freeze()).freeRef()
     network
   }
 

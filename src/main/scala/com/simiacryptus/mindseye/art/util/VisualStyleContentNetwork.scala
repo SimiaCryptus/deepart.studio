@@ -75,7 +75,7 @@ case class VisualStyleContentNetwork
       throw new IllegalArgumentException(msg)
     }
     val resView = viewLayer(contentDims)
-    val contentView: Tensor = if (prefilterContent) resView.eval(content).getDataAndFree.getAndFree(0) else content
+    val contentView: Tensor = if (prefilterContent) resView.eval(content).getData.get(0) else content
     val trainable = new SumTrainable(grouped.map(name => {
       new TileTrainer(canvas, loadedImages.map(_.addRef()), contentDims, resView, contentView, name, styleModifier, contentModifier)
     }).toArray: _*)
@@ -93,7 +93,7 @@ case class VisualStyleContentNetwork
       if (layers.isEmpty) null
       else SumInputsLayer.combine(layers.map(styleLayer => {
         val network = styleModifier.build(styleLayer, null, null, loadedImages: _*)
-        network.wrap(new AssertDimensionsLayer(1).setName(s"$styleModifier - $styleLayer")).freeRef()
+        network.add(new AssertDimensionsLayer(1).setName(s"$styleModifier - $styleLayer")).freeRef()
         network
       }): _*)
     })).toArray.map(identity).toMap
@@ -103,17 +103,17 @@ case class VisualStyleContentNetwork
       throw new IllegalArgumentException(msg)
     }
     val resView = viewLayer(contentDims)
-    val contentView = if (prefilterContent) resView.eval(content).getDataAndFree.getAndFree(0) else content
+    val contentView = if (prefilterContent) resView.eval(content).getData.get(0) else content
     new SumTrainable(grouped.map(t => {
       val (name, styleNetwork) = t
       new TiledTrainable(canvas, resView, tileSize, tilePadding, precision) {
         override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
-          val selection = regionSelector.eval(contentView).getDataAndFree.getAndFree(0)
+          val selection = regionSelector.eval(contentView).getData.get(0)
           val network = MultiPrecision.setPrecision(SumInputsLayer.combine({
             Option(styleNetwork).map(_.addRef()).toList ++ contentLayers.filter(x => x.getPipelineName == name)
               .map(contentLayer => {
                 val network = contentModifier.build(contentLayer, contentDims, regionSelector.asTensorFunction(), selection)
-                network.wrap(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer")).freeRef()
+                network.add(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer")).freeRef()
                 network
               })
           }: _*
@@ -144,7 +144,7 @@ case class VisualStyleContentNetwork
     override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
       try {
         val regionFn = regionSelector.asTensorFunction()
-        val contentRegion = regionSelector.eval(contentView).getDataAndFree.getAndFree(0)
+        val contentRegion = regionSelector.eval(contentView).getData.get(0)
         MultiPrecision.setPrecision(SumInputsLayer.combine({
           contentLayers.filter(x => x.getPipelineName == name).map(contentLayer => {
             contentModifier.build(contentLayer, contentDims, regionFn, contentRegion)

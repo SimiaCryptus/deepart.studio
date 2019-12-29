@@ -63,7 +63,7 @@ trait BasicOptimizer extends Logging {
 
   def render(canvasImage: Tensor) = {
     val network = renderingNetwork(canvasImage.getDimensions)
-    val tensor = network.eval(canvasImage).getDataAndFree.getAndFree(0)
+    val tensor = network.eval(canvasImage).getData.get(0)
     network.freeRef()
     tensor
   }
@@ -77,7 +77,7 @@ trait BasicOptimizer extends Logging {
       withTrainingMonitor(trainingMonitor => {
         out.eval(() => {
           val lineSearchInstance: LineSearchStrategy = lineSearchFactory
-          IterativeTrainer.wrap(trainable)
+          new IterativeTrainer(trainable)
             .setOrientation(orientation())
             .setMonitor(new TrainingMonitor() {
               override def clear(): Unit = trainingMonitor.clear()
@@ -107,7 +107,7 @@ trait BasicOptimizer extends Logging {
             .setMaxIterations(trainingIterations)
             .setLineSearchFactory((_: CharSequence) => lineSearchInstance)
             .setTerminateThreshold(java.lang.Double.NEGATIVE_INFINITY)
-            .runAndFree
+            .run
             .asInstanceOf[lang.Double]
         })
       })(out)

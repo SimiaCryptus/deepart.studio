@@ -145,7 +145,7 @@ object ArtUtil {
     tilePadding: Int = 0,
     precision: Precision = Precision.Float
   )(implicit log: NotebookOutput): Layer = {
-    colorTransfer(contentImage, styleImages, tileSize, tilePadding, precision, PipelineNetwork.wrap(1,
+    colorTransfer(contentImage, styleImages, tileSize, tilePadding, precision, new PipelineNetwork(1,
       new SimpleConvolutionLayer(1, 1, 3, 3).set((c: Coordinate) => {
         val coords = c.getCoords()(2)
         if ((coords % 3) == (coords / 3)) 1.0 else 0.0
@@ -180,7 +180,7 @@ object ArtUtil {
       .setMaxIterations(3)
       .setLineSearchFactory((_: CharSequence) => search)
       .setTerminateThreshold(0)
-      .runAndFree
+      .run
     colorAdjustmentLayer
   }
 
@@ -206,7 +206,7 @@ object ArtUtil {
   def imageGrid(currentImage: BufferedImage, columns: Int = 2, rows: Int = 2) = Option(currentImage).map(tensor => {
     val assemblyLayer = new ImgTileAssemblyLayer(columns, rows)
     val grid = assemblyLayer.eval(Stream.continually(Tensor.fromRGB(tensor)).take(columns * rows): _*)
-      .getDataAndFree.getAndFree(0).toRgbImage
+      .getData.get(0).toRgbImage
     assemblyLayer.freeRef()
     grid
   }).orNull

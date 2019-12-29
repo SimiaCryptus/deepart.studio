@@ -156,7 +156,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
           if (null == renderingFn) {
             tensor
           } else {
-            renderingFn(tensor.getDimensions).eval(tensor).getDataAndFree.getAndFree(0)
+            renderingFn(tensor.getDimensions).eval(tensor).getData.get(0)
           }
         }))
       }, delay = delay) {
@@ -252,7 +252,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       CudaSettings.INSTANCE().defaultPrecision = network.precision
       var content = ImageArtUtil.load(log, contentUrl, res.toInt)
       val contentTensor = if (null == content) {
-        new Tensor(res.toInt, res.toInt, 3).mapAndFree((x: Double) => FastRandom.INSTANCE.random())
+        new Tensor(res.toInt, res.toInt, 3).map((x: Double) => FastRandom.INSTANCE.random())
       } else {
         Tensor.fromRGB(content)
       }
@@ -294,7 +294,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       val height = width * aspectRatio
       var content = ImageArtUtil.load(log, initUrl, width.toInt, height.toInt)
       val contentTensor = if (null == content) {
-        new Tensor(width.toInt, height.toInt, 3).mapAndFree((x: Double) => FastRandom.INSTANCE.random())
+        new Tensor(width.toInt, height.toInt, 3).map((x: Double) => FastRandom.INSTANCE.random())
       } else {
         Tensor.fromRGB(content)
       }
