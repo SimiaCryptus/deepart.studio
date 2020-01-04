@@ -54,6 +54,9 @@ trait VisualNetwork {
       override def apply(canvas: Tensor, content: Tensor): Trainable = new ReferenceCountingBase with Trainable {
         lazy val innerTrainable = inner.apply(canvas, content)
 
+
+        override def addRef(): Trainable = super[ReferenceCountingBase].addRef().asInstanceOf[Trainable]
+
         override def measure(monitor: TrainingMonitor): PointSample = {
           val pointSample = innerTrainable.measure(monitor)
           val scaled = new PointSample(

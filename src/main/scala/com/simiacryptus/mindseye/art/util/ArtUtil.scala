@@ -22,7 +22,6 @@ package com.simiacryptus.mindseye.art.util
 import java.awt.image.BufferedImage
 import java.io.File
 import java.net.URI
-import java.util
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -42,6 +41,7 @@ import com.simiacryptus.mindseye.opt.{IterativeTrainer, Step, TrainingMonitor}
 import com.simiacryptus.mindseye.test.{StepRecord, TestUtil}
 import com.simiacryptus.mindseye.util.ImageUtil
 import com.simiacryptus.notebook._
+import com.simiacryptus.ref.wrappers.{RefArrayList, RefMap}
 import com.simiacryptus.sparkbook.NotebookRunner
 import com.simiacryptus.sparkbook.util.Java8Util._
 import com.simiacryptus.util.Util
@@ -75,7 +75,7 @@ object ArtUtil {
         }).mkString("\n")
       }
 
-      override def valueFromParams(parms: util.Map[String, String], files: util.Map[String, String]): Map[String, Boolean] = {
+      override def valueFromParams(parms: java.util.Map[String, String], files: java.util.Map[String, String]): Map[String, Boolean] = {
         (for ((k, v) <- getValue) yield {
           k -> parms.getOrDefault(ids(k), "false").toBoolean
         })
@@ -184,7 +184,7 @@ object ArtUtil {
     colorAdjustmentLayer
   }
 
-  def getTrainingMonitor[T](history: ArrayBuffer[StepRecord] = new ArrayBuffer[StepRecord], verbose: Boolean = true): TrainingMonitor = {
+  def getTrainingMonitor[T](history: Seq[StepRecord] = new ArrayBuffer[StepRecord], verbose: Boolean = true): TrainingMonitor = {
     val trainingMonitor = new TrainingMonitor() {
       override def clear(): Unit = {
         super.clear()
@@ -196,7 +196,7 @@ object ArtUtil {
       }
 
       override def onStepComplete(currentPoint: Step): Unit = {
-        history += new StepRecord(currentPoint.point.getMean, currentPoint.time, currentPoint.iteration)
+        history.add(new StepRecord(currentPoint.point.getMean, currentPoint.time, currentPoint.iteration))
         super.onStepComplete(currentPoint)
       }
     }
@@ -212,13 +212,15 @@ object ArtUtil {
   }).orNull
 
   def withTrainingMonitor[T](fn: TrainingMonitor => T)(implicit log: NotebookOutput): T = {
-    val history = new ArrayBuffer[StepRecord]
+    val history = new RefArrayList[StepRecord]
     NotebookRunner.withMonitoredJpg(() => Util.toImage(TestUtil.plot(history))) {
-      fn(getTrainingMonitor(history))
+      fn(getTrainingMonitor(history.toList))
     }
   }
 
   def findFiles(key: String, base: String): Array[String] = findFiles(Set(key), base)
+
+  def findFiles(key: String): Array[String] = findFiles(Set(key))
 
   def findFiles(key: Set[String], base: String = "s3a://data-cb03c/crawl/wikiart/", minSize: Int = 32 * 1024): Array[String] = {
     val itr = FileSystem.get(new URI(base), ImageArtUtil.getHadoopConfig()).listFiles(new Path(base), true)
@@ -230,7 +232,5 @@ object ArtUtil {
     }
     buffer.toArray
   }
-
-  def findFiles(key: String): Array[String] = findFiles(Set(key))
 
 }
