@@ -84,8 +84,6 @@ case class VisualStyleContentNetwork
     trainable
   }
 
-  def prefilterContent = false
-
   def trainable_sharedStyle(canvas: Tensor, content: Tensor, loadedImages: Array[Tensor], styleModifier: VisualModifier, contentModifier: VisualModifier) = {
     val contentDims = content.getDimensions()
     val grouped: Map[String, PipelineNetwork] = ((contentLayers.map(_.getPipelineName -> null) ++ styleLayers.groupBy(_.getPipelineName).toList).groupBy(_._1).mapValues(pipelineLayers => {
@@ -129,6 +127,8 @@ case class VisualStyleContentNetwork
       }
     }).toArray: _*)
   }
+
+  def prefilterContent = false
 
   class TileTrainer
   (
