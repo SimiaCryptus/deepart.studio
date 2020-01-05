@@ -72,14 +72,6 @@ trait TaskRegistry {
     ).start()(s3client, ec2client)) else None
   }
 
-  def indexStr: String = className
-
-  def className: String = getClass.getSimpleName.stripSuffix("$")
-
-  def indexFile: String = "index.html"
-
-  def description: String = ""
-
   def registerWithIndexJPG(canvas: => Tensor)(implicit log: NotebookOutput): Option[JobRegistration[Tensor]] = {
     val archiveHome = log.getArchiveHome
     if (!s3bucket.isEmpty && null != archiveHome) Option(new JpgRegistration(
@@ -93,5 +85,13 @@ trait TaskRegistry {
       description = description
     ).start()(s3client, ec2client)) else None
   }
+
+  def indexStr: String = className
+
+  def className: String = getClass.getSimpleName.stripSuffix("$")
+
+  def indexFile: String = "index.html"
+
+  def description: String = ""
 
 }
