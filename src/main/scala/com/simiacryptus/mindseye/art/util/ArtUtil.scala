@@ -191,7 +191,7 @@ object ArtUtil {
       }
 
       override def log(msg: String): Unit = {
-        if (verbose) System.out.println(msg)
+        if (verbose) com.simiacryptus.ref.wrappers.RefSystem.out.println(msg)
         super.log(msg)
       }
 

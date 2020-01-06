@@ -76,7 +76,7 @@ abstract class JobRegistration[T]
     logger.info("Writing " + JobRegistry(
       reportUrl = reportUrl,
       liveUrl = liveUrl,
-      lastReport = System.currentTimeMillis(),
+      lastReport = com.simiacryptus.ref.wrappers.RefSystem.currentTimeMillis(),
       instances = List(EC2Util.instanceId()),
       image = uploadImage(canvas()),
       id = id,
