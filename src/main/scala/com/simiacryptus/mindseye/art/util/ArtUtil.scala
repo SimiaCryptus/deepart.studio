@@ -220,6 +220,8 @@ object ArtUtil {
 
   def findFiles(key: String, base: String): Array[String] = findFiles(Set(key), base)
 
+  def findFiles(key: String): Array[String] = findFiles(Set(key))
+
   def findFiles(key: Set[String], base: String = "s3a://data-cb03c/crawl/wikiart/", minSize: Int = 32 * 1024): Array[String] = {
     val itr = FileSystem.get(new URI(base), ImageArtUtil.getHadoopConfig()).listFiles(new Path(base), true)
     val buffer = new ArrayBuffer[String]()
@@ -230,7 +232,5 @@ object ArtUtil {
     }
     buffer.toArray
   }
-
-  def findFiles(key: String): Array[String] = findFiles(Set(key))
 
 }

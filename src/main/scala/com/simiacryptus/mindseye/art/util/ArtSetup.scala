@@ -203,6 +203,41 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     optimizer = optimizer,
     resolutions = resolutions)
 
+  def paint_single
+  (
+    contentUrl: String,
+    initFn: Tensor => Tensor,
+    canvas: AtomicReference[Tensor],
+    network: VisualNetwork,
+    optimizer: BasicOptimizer,
+    resolutions: Double*
+  )(implicit log: NotebookOutput): Double = paint(
+    contentUrl = contentUrl,
+    initFn = initFn,
+    canvas = canvas,
+    network = network,
+    optimizer = optimizer,
+    renderingFn = x => new PipelineNetwork(1),
+    resolutions = resolutions)
+
+  def paint_single_view
+  (
+    contentUrl: String,
+    initFn: Tensor => Tensor,
+    canvas: AtomicReference[Tensor],
+    network: VisualNetwork,
+    optimizer: BasicOptimizer,
+    renderingFn: Seq[Int] => PipelineNetwork,
+    resolutions: Double*
+  )(implicit log: NotebookOutput): Double = paint(
+    contentUrl = contentUrl,
+    initFn = initFn,
+    canvas = canvas,
+    network = network,
+    optimizer = optimizer,
+    renderingFn = renderingFn,
+    resolutions = resolutions)
+
   def paint
   (
     contentUrl: String,
@@ -252,41 +287,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       }).last
     }
   }
-
-  def paint_single
-  (
-    contentUrl: String,
-    initFn: Tensor => Tensor,
-    canvas: AtomicReference[Tensor],
-    network: VisualNetwork,
-    optimizer: BasicOptimizer,
-    resolutions: Double*
-  )(implicit log: NotebookOutput): Double = paint(
-    contentUrl = contentUrl,
-    initFn = initFn,
-    canvas = canvas,
-    network = network,
-    optimizer = optimizer,
-    renderingFn = x => new PipelineNetwork(1),
-    resolutions = resolutions)
-
-  def paint_single_view
-  (
-    contentUrl: String,
-    initFn: Tensor => Tensor,
-    canvas: AtomicReference[Tensor],
-    network: VisualNetwork,
-    optimizer: BasicOptimizer,
-    renderingFn: Seq[Int] => PipelineNetwork,
-    resolutions: Double*
-  )(implicit log: NotebookOutput): Double = paint(
-    contentUrl = contentUrl,
-    initFn = initFn,
-    canvas = canvas,
-    network = network,
-    optimizer = optimizer,
-    renderingFn = renderingFn,
-    resolutions = resolutions)
 
   def texture(aspectRatio: Double, initUrl: String, canvas: AtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Seq[Double], renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1))(implicit log: NotebookOutput): Double = {
     def prep(width: Double) = {
