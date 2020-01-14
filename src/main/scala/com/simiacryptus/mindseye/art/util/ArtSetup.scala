@@ -99,6 +99,10 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     getPaintings(new URI("https://www.wikiart.org/en/search/" + URLEncoder.encode(searchWord, "UTF-8").replaceAllLiterally("+", "%20") + "/1?json=2"), minWidth, 100)
   }
 
+  def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
+    getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
+  }
+
   def getPaintings(uri: URI, minWidth: Int, maxResults: Int): Array[String] = {
     new GsonBuilder().create().fromJson(IOUtils.toString(
       uri,
@@ -124,10 +128,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
             ""
         }
       }).filterNot(_.isEmpty).toArray
-  }
-
-  def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
-    getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
   }
 
   def paintEveryOther(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, resolutions: Double*)(implicit sub: NotebookOutput) = {
@@ -203,41 +203,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     optimizer = optimizer,
     resolutions = resolutions)
 
-  def paint_single
-  (
-    contentUrl: String,
-    initFn: Tensor => Tensor,
-    canvas: AtomicReference[Tensor],
-    network: VisualNetwork,
-    optimizer: BasicOptimizer,
-    resolutions: Double*
-  )(implicit log: NotebookOutput): Double = paint(
-    contentUrl = contentUrl,
-    initFn = initFn,
-    canvas = canvas,
-    network = network,
-    optimizer = optimizer,
-    renderingFn = x => new PipelineNetwork(1),
-    resolutions = resolutions)
-
-  def paint_single_view
-  (
-    contentUrl: String,
-    initFn: Tensor => Tensor,
-    canvas: AtomicReference[Tensor],
-    network: VisualNetwork,
-    optimizer: BasicOptimizer,
-    renderingFn: Seq[Int] => PipelineNetwork,
-    resolutions: Double*
-  )(implicit log: NotebookOutput): Double = paint(
-    contentUrl = contentUrl,
-    initFn = initFn,
-    canvas = canvas,
-    network = network,
-    optimizer = optimizer,
-    renderingFn = renderingFn,
-    resolutions = resolutions)
-
   def paint
   (
     contentUrl: String,
@@ -287,6 +252,41 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       }).last
     }
   }
+
+  def paint_single
+  (
+    contentUrl: String,
+    initFn: Tensor => Tensor,
+    canvas: AtomicReference[Tensor],
+    network: VisualNetwork,
+    optimizer: BasicOptimizer,
+    resolutions: Double*
+  )(implicit log: NotebookOutput): Double = paint(
+    contentUrl = contentUrl,
+    initFn = initFn,
+    canvas = canvas,
+    network = network,
+    optimizer = optimizer,
+    renderingFn = x => new PipelineNetwork(1),
+    resolutions = resolutions)
+
+  def paint_single_view
+  (
+    contentUrl: String,
+    initFn: Tensor => Tensor,
+    canvas: AtomicReference[Tensor],
+    network: VisualNetwork,
+    optimizer: BasicOptimizer,
+    renderingFn: Seq[Int] => PipelineNetwork,
+    resolutions: Double*
+  )(implicit log: NotebookOutput): Double = paint(
+    contentUrl = contentUrl,
+    initFn = initFn,
+    canvas = canvas,
+    network = network,
+    optimizer = optimizer,
+    renderingFn = renderingFn,
+    resolutions = resolutions)
 
   def texture(aspectRatio: Double, initUrl: String, canvas: AtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Seq[Double], renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1))(implicit log: NotebookOutput): Double = {
     def prep(width: Double) = {
