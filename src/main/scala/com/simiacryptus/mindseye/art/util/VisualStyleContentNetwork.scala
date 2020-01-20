@@ -93,7 +93,9 @@ case class VisualStyleContentNetwork
       if (layers.isEmpty) null
       else SumInputsLayer.combine(layers.map(styleLayer => {
         val network = styleModifier.build(styleLayer, null, null, loadedImages: _*)
-        network.add(new AssertDimensionsLayer(1).setName(s"$styleModifier - $styleLayer")).freeRef()
+        val layer = new AssertDimensionsLayer(1)
+        layer.setName(s"$styleModifier - $styleLayer")
+        network.add(layer).freeRef()
         network
       }): _*)
     })).toArray.map(identity).toMap
@@ -109,15 +111,17 @@ case class VisualStyleContentNetwork
       new TiledTrainable(canvas, resView, tileSize, tilePadding, precision) {
         override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
           val selection = regionSelector.eval(contentView).getData.get(0)
-          val network = MultiPrecision.setPrecision(SumInputsLayer.combine({
+          val network = SumInputsLayer.combine({
             Option(styleNetwork).map(_.addRef()).toList ++ contentLayers.filter(x => x.getPipelineName == name)
               .map(contentLayer => {
                 val network = contentModifier.build(contentLayer, contentDims, regionSelector.asTensorFunction(), selection)
-                network.add(new AssertDimensionsLayer(1).setName(s"$contentModifier - $contentLayer")).freeRef()
+                val layer = new AssertDimensionsLayer(1)
+                layer.setName(s"$contentModifier - $contentLayer")
+                network.add(layer).freeRef()
                 network
               })
-          }: _*
-          ), precision)
+          }: _*)
+          MultiPrecision.setPrecision(network, precision)
           regionSelector.freeRef()
           network
         }
@@ -145,13 +149,15 @@ case class VisualStyleContentNetwork
       try {
         val regionFn = regionSelector.asTensorFunction()
         val contentRegion = regionSelector.eval(contentView).getData.get(0)
-        MultiPrecision.setPrecision(SumInputsLayer.combine({
+        val network = SumInputsLayer.combine({
           contentLayers.filter(x => x.getPipelineName == name).map(contentLayer => {
             contentModifier.build(contentLayer, contentDims, regionFn, contentRegion)
           }) ++ styleLayers.filter(x => x.getPipelineName == name).map(styleLayer => {
             styleModifier.build(styleLayer, contentDims, regionFn, loadedImages: _*)
           })
-        }: _*), precision)
+        }: _*)
+        MultiPrecision.setPrecision(network, precision)
+        network
       } finally {
         regionSelector.freeRef()
       }

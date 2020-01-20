@@ -145,13 +145,18 @@ object ArtUtil {
     tilePadding: Int = 0,
     precision: Precision = Precision.Float
   )(implicit log: NotebookOutput): Layer = {
-    colorTransfer(contentImage, styleImages, tileSize, tilePadding, precision, new PipelineNetwork(1,
-      new SimpleConvolutionLayer(1, 1, 3, 3).set((c: Coordinate) => {
-        val coords = c.getCoords()(2)
-        if ((coords % 3) == (coords / 3)) 1.0 else 0.0
-      }),
-      new ImgBandBiasLayer(3).setWeights((i: Int) => 0.0)
-    )).freeze()
+    val biasLayer = new ImgBandBiasLayer(3)
+    val convolutionLayer = new SimpleConvolutionLayer(1, 1, 3, 3)
+    convolutionLayer.set((c: Coordinate) => {
+      val coords = c.getCoords()(2)
+      if ((coords % 3) == (coords / 3)) 1.0 else 0.0
+    })
+    biasLayer.setWeights((i: Int) => 0.0)
+    val layer = colorTransfer(contentImage, styleImages, tileSize, tilePadding, precision, new PipelineNetwork(1,
+      convolutionLayer, biasLayer
+    ))
+    layer.freeze()
+    layer
   }
 
   def colorTransfer(contentImage: Tensor, styleImages: Seq[Tensor], tileSize: Int, tilePadding: Int, precision: Precision, colorAdjustmentLayer: PipelineNetwork): Layer = {
@@ -166,22 +171,37 @@ object ArtUtil {
 
     val trainingMonitor = getTrainingMonitor(verbose = false)
     val search = new QuadraticSearch().setCurrentRate(1e0).setMaxRate(1e3).setRelativeTolerance(1e-2)
-    new IterativeTrainer(trainable_color)
-      .setOrientation(new TrustRegionStrategy() {
+    val trainer = new IterativeTrainer(trainable_color)
+    trainer.setOrientation(new TrustRegionStrategy() {
         override def getRegionPolicy(layer: Layer): TrustRegion = layer match {
           case null => null
           case layer if layer.isFrozen => null
           case layer: SimpleConvolutionLayer => new OrthonormalConstraint(ImageArtUtil.getIndexMap(layer): _*)
           case _ => null
         }
-      })
-      .setMonitor(trainingMonitor)
-      .setTimeout(5, TimeUnit.MINUTES)
-      .setMaxIterations(3)
-      .setLineSearchFactory((_: CharSequence) => search)
-      .setTerminateThreshold(0)
-      .run
+      });
+    trainer.setMonitor(trainingMonitor)
+    trainer.setTimeout(5, TimeUnit.MINUTES)
+    trainer.setMaxIterations(3)
+    trainer.setLineSearchFactory((_: CharSequence) => search)
+    trainer.setTerminateThreshold(0)
+    trainer.run
     colorAdjustmentLayer
+  }
+
+  def imageGrid(currentImage: BufferedImage, columns: Int = 2, rows: Int = 2) = Option(currentImage).map(tensor => {
+    val assemblyLayer = new ImgTileAssemblyLayer(columns, rows)
+    val grid = assemblyLayer.eval(Stream.continually(Tensor.fromRGB(tensor)).take(columns * rows): _*)
+      .getData.get(0).toRgbImage
+    assemblyLayer.freeRef()
+    grid
+  }).orNull
+
+  def withTrainingMonitor[T](fn: TrainingMonitor => T)(implicit log: NotebookOutput): T = {
+    val history = new RefArrayList[StepRecord]
+    NotebookRunner.withMonitoredJpg(() => Util.toImage(TestUtil.plot(history))) {
+      fn(getTrainingMonitor(history.toList))
+    }
   }
 
   def getTrainingMonitor[T](history: Seq[StepRecord] = new ArrayBuffer[StepRecord], verbose: Boolean = true): TrainingMonitor = {
@@ -203,22 +223,9 @@ object ArtUtil {
     trainingMonitor
   }
 
-  def imageGrid(currentImage: BufferedImage, columns: Int = 2, rows: Int = 2) = Option(currentImage).map(tensor => {
-    val assemblyLayer = new ImgTileAssemblyLayer(columns, rows)
-    val grid = assemblyLayer.eval(Stream.continually(Tensor.fromRGB(tensor)).take(columns * rows): _*)
-      .getData.get(0).toRgbImage
-    assemblyLayer.freeRef()
-    grid
-  }).orNull
-
-  def withTrainingMonitor[T](fn: TrainingMonitor => T)(implicit log: NotebookOutput): T = {
-    val history = new RefArrayList[StepRecord]
-    NotebookRunner.withMonitoredJpg(() => Util.toImage(TestUtil.plot(history))) {
-      fn(getTrainingMonitor(history.toList))
-    }
-  }
-
   def findFiles(key: String, base: String): Array[String] = findFiles(Set(key), base)
+
+  def findFiles(key: String): Array[String] = findFiles(Set(key))
 
   def findFiles(key: Set[String], base: String = "s3a://data-cb03c/crawl/wikiart/", minSize: Int = 32 * 1024): Array[String] = {
     val itr = FileSystem.get(new URI(base), ImageArtUtil.getHadoopConfig()).listFiles(new Path(base), true)
@@ -230,7 +237,5 @@ object ArtUtil {
     }
     buffer.toArray
   }
-
-  def findFiles(key: String): Array[String] = findFiles(Set(key))
 
 }

@@ -171,7 +171,9 @@ case class VisualStyleNetwork
       new TiledTrainable(canvas, viewLayer(canvas.getDimensions()), tileSize, tilePadding, precision) {
         override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
           regionSelector.freeRef()
-          MultiPrecision.setPrecision(styleNetwork.addRef(), precision)
+          val network = styleNetwork.addRef()
+          MultiPrecision.setPrecision(network, precision)
+          network
         }
       }
     })): _*)

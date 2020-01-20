@@ -171,7 +171,9 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
             val l = canvases.zipWithIndex.take(i).filter(_._1.get() != null).lastOption
             val r = canvases.zipWithIndex.drop(i + 1).reverse.filter(_._1.get() != null).lastOption
             if (l.isDefined && r.isDefined && l.get._2 != r.get._2) {
-              canvas.set(l.get._1.get().add(r.get._1.get()).scaleInPlace(0.5))
+              val tensor = l.get._1.get().add(r.get._1.get())
+              tensor.scaleInPlace(0.5);
+              canvas.set(tensor)
             } else {
               canvas.set(load(Tensor.fromRGB(content), initUrl))
             }

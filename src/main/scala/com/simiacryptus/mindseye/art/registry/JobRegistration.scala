@@ -67,6 +67,19 @@ abstract class JobRegistration[T]
 
   def periodMinutes = 5
 
+  def stop()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
+    try {
+      update()
+    } catch {
+      case e: Throwable => logger.warn("Error in update", e)
+    }
+    try {
+      close()
+    } catch {
+      case e: Throwable => logger.warn("Error in close", e)
+    }
+  }
+
   def update()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
     upload()
     rebuildIndex()
@@ -137,19 +150,6 @@ abstract class JobRegistration[T]
          |</body></html>""".stripMargin.
         getBytes
     ), metadata).withCannedAcl(CannedAccessControlList.PublicRead))
-  }
-
-  def stop()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
-    try {
-      update()
-    } catch {
-      case e: Throwable => logger.warn("Error in update", e)
-    }
-    try {
-      close()
-    } catch {
-      case e: Throwable => logger.warn("Error in close", e)
-    }
   }
 
   override def close(): Unit = {

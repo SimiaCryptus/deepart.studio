@@ -36,22 +36,32 @@ abstract class RotorArt
     network.add(new SumInputsLayer(), (0 until rotationalSegments)
       .map(segment => {
         if (0 == segment) network.getInput(0) else {
+          val layer = getRotor(segment * 2 * Math.PI / rotationalSegments, canvasDims)
+          layer.setChannelSelector((permutation ^ segment).indices)
           network.add(
-            getRotor(segment * 2 * Math.PI / rotationalSegments, canvasDims).setChannelSelector((permutation ^ segment).indices: _*),
+            layer,
             network.getInput(0)
           )
         }
       }): _*).freeRef()
-    network.add(new LinearActivationLayer().setScale(1.0 / rotationalSegments).freeze()).freeRef()
-    network.add(new BoundedActivationLayer().setMinValue(0).setMaxValue(255).freeze()).freeRef()
+    val layer = new LinearActivationLayer()
+    layer.setScale(1.0 / rotationalSegments)
+    layer.freeze()
+    network.add(layer).freeRef()
+    val boundedActivationLayer = new BoundedActivationLayer()
+    boundedActivationLayer.setMinValue(0)
+    boundedActivationLayer.setMaxValue(255)
+    boundedActivationLayer.freeze()
+    network.add(boundedActivationLayer).freeRef()
     network
   }
 
   def getRotor(radians: Double, canvasDims: Array[Int]) = {
-    new ImgViewLayer(canvasDims(0), canvasDims(1), true)
-      .setRotationCenterX(canvasDims(0) / 2)
-      .setRotationCenterY(canvasDims(1) / 2)
-      .setRotationRadians(radians)
+    val layer = new ImgViewLayer(canvasDims(0), canvasDims(1), true)
+    layer.setRotationCenterX(canvasDims(0) / 2)
+    layer.setRotationCenterY(canvasDims(1) / 2)
+    layer.setRotationRadians(radians)
+    layer
   }
 
 }

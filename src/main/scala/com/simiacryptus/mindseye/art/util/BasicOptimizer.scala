@@ -77,9 +77,9 @@ trait BasicOptimizer extends Logging {
       withTrainingMonitor(trainingMonitor => {
         out.eval(() => {
           val lineSearchInstance: LineSearchStrategy = lineSearchFactory
-          new IterativeTrainer(trainable)
-            .setOrientation(orientation())
-            .setMonitor(new TrainingMonitor() {
+          val trainer = new IterativeTrainer(trainable)
+          trainer.setOrientation(orientation())
+          trainer.setMonitor(new TrainingMonitor() {
               override def clear(): Unit = trainingMonitor.clear()
 
               override def log(msg: String): Unit = {
@@ -103,12 +103,12 @@ trait BasicOptimizer extends Logging {
                 super.onStepComplete(currentPoint)
               }
             })
-            .setTimeout(trainingMinutes, TimeUnit.MINUTES)
-            .setMaxIterations(trainingIterations)
-            .setLineSearchFactory((_: CharSequence) => lineSearchInstance)
-            .setTerminateThreshold(java.lang.Double.NEGATIVE_INFINITY)
-            .run
-            .asInstanceOf[lang.Double]
+          trainer.setTimeout(trainingMinutes, TimeUnit.MINUTES)
+          trainer.setMaxIterations(trainingIterations)
+          trainer.setLineSearchFactory((_: CharSequence) => lineSearchInstance)
+          trainer.setTerminateThreshold(java.lang.Double.NEGATIVE_INFINITY)
+          trainer.run
+          trainer.asInstanceOf[lang.Double]
         })
       })(out)
     }(out)
