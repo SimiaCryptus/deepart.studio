@@ -28,6 +28,7 @@ import com.simiacryptus.mindseye.lang.{Layer, Tensor}
 import com.simiacryptus.mindseye.layers.java.SumInputsLayer
 import com.simiacryptus.mindseye.network.PipelineNetwork
 import com.simiacryptus.notebook.NotebookOutput
+import com.simiacryptus.ref.lang.RefUtil
 
 object VisualStyleNetwork {
   def DOMELA_1(implicit log: NotebookOutput) = new VisualStyleNetwork(
@@ -165,8 +166,10 @@ case class VisualStyleNetwork
   def apply(canvas: Tensor, content: Tensor = null): Trainable = {
     val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas))
     val grouped = styleLayers.groupBy(_.getPipelineName).mapValues(pipelineLayers => {
-      SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(styleModifiers.reduce(_ combine _).build(_, null, null, loadedImages: _*)): _*)
-    })
+      SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(pipelineLayer =>
+        styleModifiers.reduce(_ combine _).build(pipelineLayer, null, null, RefUtil.addRef(loadedImages): _*)): _*)
+    }).toArray.toMap
+    RefUtil.freeRef(loadedImages)
     new SumTrainable((grouped.values.toList.map(styleNetwork => {
       new TiledTrainable(canvas, viewLayer(canvas.getDimensions()), tileSize, tilePadding, precision) {
         override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {

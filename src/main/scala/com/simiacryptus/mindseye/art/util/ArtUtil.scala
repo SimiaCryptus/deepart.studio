@@ -99,8 +99,9 @@ object ArtUtil {
         for (layer <- trainable.getInner) setPrecision(layer, precision)
       case trainable: TiledTrainable =>
         trainable.setPrecision(precision)
-      case trainable: Trainable if null != trainable.getLayer =>
-        MultiPrecision.setPrecision(trainable.getLayer.asInstanceOf[DAGNetwork], precision)
+      case trainable: Trainable  =>
+        val layer = trainable.getLayer
+        if (null != layer) MultiPrecision.setPrecision(layer.asInstanceOf[DAGNetwork], precision)
     }
   }
 
