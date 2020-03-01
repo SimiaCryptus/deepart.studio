@@ -22,6 +22,7 @@ package com.simiacryptus.mindseye.art.util
 import java.awt.image.BufferedImage
 import java.io.File
 import java.net.URI
+import java.util
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -85,6 +86,7 @@ object ArtUtil {
 
   def setPrecision(trainable: Trainable, precision: Precision): Boolean = {
     if (CudaSettings.INSTANCE().defaultPrecision == precision) {
+      trainable.freeRef()
       false
     } else {
       CudaSettings.INSTANCE().defaultPrecision = precision
@@ -97,11 +99,17 @@ object ArtUtil {
     trainable match {
       case trainable: SumTrainable =>
         for (layer <- trainable.getInner) setPrecision(layer, precision)
+        trainable.freeRef()
       case trainable: TiledTrainable =>
         trainable.setPrecision(precision)
+        trainable.freeRef()
       case trainable: Trainable  =>
         val layer = trainable.getLayer
-        if (null != layer) MultiPrecision.setPrecision(layer.asInstanceOf[DAGNetwork], precision)
+        if (null != layer) {
+          MultiPrecision.setPrecision(layer.asInstanceOf[DAGNetwork], precision)
+          layer.freeRef()
+        }
+        trainable.freeRef()
     }
   }
 
@@ -130,7 +138,9 @@ object ArtUtil {
   }
 
   def load(content: Tensor, url: String)(implicit log: NotebookOutput): Tensor = {
-    load(content.getDimensions, url)
+    val dimensions = content.getDimensions
+    content.freeRef()
+    load(dimensions, url)
   }
 
   def load(contentDims: Array[Int], url: String)(implicit log: NotebookOutput = new NullNotebookOutput()): Tensor = {
@@ -192,20 +202,25 @@ object ArtUtil {
 
   def imageGrid(currentImage: BufferedImage, columns: Int = 2, rows: Int = 2) = Option(currentImage).map(tensor => {
     val assemblyLayer = new ImgTileAssemblyLayer(columns, rows)
-    val grid = assemblyLayer.eval(Stream.continually(Tensor.fromRGB(tensor)).take(columns * rows): _*)
-      .getData.get(0).toRgbImage
+    val result = assemblyLayer.eval(Stream.continually(Tensor.fromRGB(tensor)).take(columns * rows): _*)
+    val data = result.getData
+    val tensor1 = data.get(0)
+    val grid = tensor1.toRgbImage
+    tensor1.freeRef()
+    data.freeRef()
+    result.freeRef()
     assemblyLayer.freeRef()
     grid
   }).orNull
 
   def withTrainingMonitor[T](fn: TrainingMonitor => T)(implicit log: NotebookOutput): T = {
-    val history = new RefArrayList[StepRecord]
+    val history = new util.ArrayList[StepRecord]
     NotebookRunner.withMonitoredJpg(() => Util.toImage(TestUtil.plot(history))) {
-      fn(getTrainingMonitor(history.toList))
+      fn(getTrainingMonitor(history))
     }
   }
 
-  def getTrainingMonitor[T](history: Seq[StepRecord] = new ArrayBuffer[StepRecord], verbose: Boolean = true): TrainingMonitor = {
+  def getTrainingMonitor[T](history: util.ArrayList[StepRecord] = new util.ArrayList[StepRecord], verbose: Boolean = true): TrainingMonitor = {
     val trainingMonitor = new TrainingMonitor() {
       override def clear(): Unit = {
         super.clear()

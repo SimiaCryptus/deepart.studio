@@ -45,14 +45,20 @@ trait BasicOptimizer extends Logging {
 
   def optimize(canvasImage: Tensor, trainable: Trainable)(implicit log: NotebookOutput): Double = {
     try {
-      def currentImage = render(canvasImage).toRgbImage
+      def currentImage = {
+        val tensor = render(canvasImage.addRef())
+        val image = tensor.toRgbImage
+        tensor.freeRef()
+        image
+      }
 
       withMonitoredJpg[Double](() => currentImage) {
         log.subreport("Optimization", (sub: NotebookOutput) => {
-          optimize(currentImage, trainable)(sub).asInstanceOf[java.lang.Double]
+          optimize(()=>currentImage, trainable)(sub).asInstanceOf[java.lang.Double]
         })
       }
     } finally {
+      canvasImage.freeRef()
       try {
         onComplete()
       } catch {
@@ -63,17 +69,21 @@ trait BasicOptimizer extends Logging {
 
   def render(canvasImage: Tensor) = {
     val network = renderingNetwork(canvasImage.getDimensions)
-    val tensor = network.eval(canvasImage).getData.get(0)
+    val result = network.eval(canvasImage)
     network.freeRef()
+    val data = result.getData
+    result.freeRef()
+    val tensor = data.get(0)
+    data.freeRef()
     tensor
   }
 
   def renderingNetwork(dims: Seq[Int]): PipelineNetwork = new PipelineNetwork(1)
 
-  def optimize(currentImage: => BufferedImage, trainable: Trainable)(implicit out: NotebookOutput): Double = {
+  def optimize(currentImage: () => BufferedImage, trainable: Trainable)(implicit out: NotebookOutput): Double = {
     val timelineAnimation = new ArrayBuffer[BufferedImage]()
-    timelineAnimation += currentImage
-    NotebookRunner.withMonitoredGif(() => timelineAnimation.toList ++ List(currentImage), delay = 1000) {
+    timelineAnimation += currentImage()
+    NotebookRunner.withMonitoredGif(() => timelineAnimation.toList ++ List(currentImage()), delay = 1000) {
       withTrainingMonitor(trainingMonitor => {
         out.eval(() => {
           val lineSearchInstance: LineSearchStrategy = lineSearchFactory
@@ -88,17 +98,17 @@ trait BasicOptimizer extends Logging {
               }
 
               override def onStepFail(currentPoint: Step): Boolean = {
-                BasicOptimizer.this.onStepFail(trainable, currentPoint)
+                BasicOptimizer.this.onStepFail(trainable.addRef().asInstanceOf[Trainable], currentPoint)
               }
 
               override def onStepComplete(currentPoint: Step): Unit = {
                 if (0 < logEvery && (0 == currentPoint.iteration % logEvery || currentPoint.iteration < logEvery)) {
-                  val image = currentImage
+                  val image = currentImage()
                   timelineAnimation += image
                   val caption = "Iteration " + currentPoint.iteration
                   out.p(caption + "\n" + out.jpg(image, caption))
                 }
-                BasicOptimizer.this.onStepComplete(trainable, currentPoint)
+                BasicOptimizer.this.onStepComplete(trainable.addRef().asInstanceOf[Trainable], currentPoint)
                 trainingMonitor.onStepComplete(currentPoint)
                 super.onStepComplete(currentPoint)
               }
@@ -107,8 +117,9 @@ trait BasicOptimizer extends Logging {
           trainer.setMaxIterations(trainingIterations)
           trainer.setLineSearchFactory((_: CharSequence) => lineSearchInstance)
           trainer.setTerminateThreshold(java.lang.Double.NEGATIVE_INFINITY)
-          trainer.run
-          trainer.asInstanceOf[lang.Double]
+          val result = trainer.run.asInstanceOf[lang.Double]
+          trainer.freeRef()
+          result
         })
       })(out)
     }(out)
@@ -117,10 +128,12 @@ trait BasicOptimizer extends Logging {
   def log(msg: String): Unit = {}
 
   def onStepComplete(trainable: Trainable, currentPoint: Step) = {
+    currentPoint.freeRef()
     setPrecision(trainable, Precision.Float)
   }
 
   def onStepFail(trainable: Trainable, currentPoint: Step): Boolean = {
+    currentPoint.freeRef()
     setPrecision(trainable, Precision.Double)
   }
 
@@ -148,6 +161,7 @@ trait BasicOptimizer extends Logging {
     //      //                  .groupBy(_.getCoords()(2)).values
     //      //                  .toArray.map(_.map(_.getIndex).toArray): _*),
     //    )
+    layer.freeRef()
     new RangeConstraint().setMin(0).setMax(256)
   }
 

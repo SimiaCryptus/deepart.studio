@@ -51,7 +51,7 @@ case class VisualStyleContentNetwork
 )(implicit override val log: NotebookOutput) extends ImageSource(styleUrl) with VisualNetwork {
 
   def apply(canvas: Tensor, content: Tensor): Trainable = {
-    val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas))
+    val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas.addRef()))
     val styleModifier = styleModifiers.reduceOption(_ combine _).getOrElse(new VisualModifier {
       override def build(visualModifierParameters: VisualModifierParameters): PipelineNetwork = {
         visualModifierParameters.freeRef()
@@ -70,15 +70,25 @@ case class VisualStyleContentNetwork
     require(!loadedImages.isEmpty)
     val grouped: Array[String] = ((contentLayers.map(_.getPipelineName -> null) ++ styleLayers.groupBy(_.getPipelineName).toList).map(_._1).distinct).toArray
     val contentDims = content.getDimensions()
-    if (contentDims.toList != canvas.getDimensions.toList) {
-      val msg = s"""${contentDims.toList} != ${canvas.getDimensions.toList}"""
+    val canvasDims = canvas.getDimensions
+    if (contentDims.toList != canvasDims.toList) {
+      val msg = s"""${contentDims.toList} != ${canvasDims.toList}"""
       throw new IllegalArgumentException(msg)
     }
     val resView = viewLayer(contentDims)
-    val contentView: Tensor = if (prefilterContent) resView.eval(content).getData.get(0) else content
+    val contentView: Tensor = if (prefilterContent) {
+      val result = resView.eval(content)
+      val data = result.getData
+      val tensor = data.get(0)
+      data.freeRef()
+      result.freeRef()
+      tensor
+    } else content
     val trainable = new SumTrainable(grouped.map(name => {
-      new TileTrainer(canvas, loadedImages.map(_.addRef()), contentDims, resView, contentView, name, styleModifier, contentModifier)
+      new TileTrainer(canvas.addRef(), loadedImages.map(_.addRef()), contentDims, resView, contentView.addRef(), name, styleModifier, contentModifier)
     }).toArray: _*)
+    contentView.freeRef()
+    canvas.freeRef()
     loadedImages.foreach(_.freeRef())
     resView.freeRef()
     trainable
@@ -88,6 +98,7 @@ case class VisualStyleContentNetwork
 
   def trainable_sharedStyle(canvas: Tensor, content: Tensor, loadedImages: Array[Tensor], styleModifier: VisualModifier, contentModifier: VisualModifier) = {
     val contentDims = content.getDimensions()
+    val canvasDims = canvas.getDimensions
     val grouped: Map[String, PipelineNetwork] = ((contentLayers.map(_.getPipelineName -> null) ++ styleLayers.groupBy(_.getPipelineName).toList).groupBy(_._1).mapValues(pipelineLayers => {
       val layers = pipelineLayers.flatMap(x => Option(x._2).toList.flatten)
       if (layers.isEmpty) null
@@ -100,17 +111,28 @@ case class VisualStyleContentNetwork
       }): _*)
     })).toArray.map(identity).toMap
     loadedImages.foreach(_.freeRef())
-    if (contentDims.toList != canvas.getDimensions.toList) {
-      val msg = s"""${contentDims.toList} != ${canvas.getDimensions.toList}"""
+    if (contentDims.toList != canvasDims.toList) {
+      val msg = s"""${contentDims.toList} != ${canvasDims.toList}"""
       throw new IllegalArgumentException(msg)
     }
     val resView = viewLayer(contentDims)
-    val contentView = if (prefilterContent) resView.eval(content).getData.get(0) else content
-    new SumTrainable(grouped.map(t => {
+    val contentView = if (prefilterContent) {
+      val result = resView.eval(content)
+      val data = result.getData
+      val tensor = data.get(0)
+      data.freeRef()
+      result.freeRef()
+      tensor
+    } else content
+    val sumTrainable = new SumTrainable(grouped.map(t => {
       val (name, styleNetwork) = t
-      new TiledTrainable(canvas, resView, tileSize, tilePadding, precision) {
+      new TiledTrainable(canvas.addRef(), resView, tileSize, tilePadding, precision) {
         override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
-          val selection = regionSelector.eval(contentView).getData.get(0)
+          val result = regionSelector.eval(contentView.addRef())
+          val data = result.getData
+          val selection = data.get(0)
+          data.freeRef()
+          result.freeRef()
           val network = SumInputsLayer.combine({
             Option(styleNetwork).map(_.addRef()).toList ++ contentLayers.filter(x => x.getPipelineName == name)
               .map(contentLayer => {
@@ -132,6 +154,9 @@ case class VisualStyleContentNetwork
         }
       }
     }).toArray: _*)
+    contentView.freeRef()
+    canvas.freeRef()
+    sumTrainable
   }
 
   class TileTrainer
@@ -148,7 +173,11 @@ case class VisualStyleContentNetwork
     override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
       try {
         val regionFn = regionSelector.asTensorFunction()
-        val contentRegion = regionSelector.eval(contentView).getData.get(0)
+        val result = regionSelector.eval(contentView)
+        val data = result.getData
+        val contentRegion = data.get(0)
+        data.freeRef()
+        result.freeRef()
         val network = SumInputsLayer.combine({
           contentLayers.filter(x => x.getPipelineName == name).map(contentLayer => {
             contentModifier.build(contentLayer, contentDims, regionFn, contentRegion)

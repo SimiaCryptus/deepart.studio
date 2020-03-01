@@ -39,7 +39,7 @@ trait VisualNetwork {
       override def precision: Precision = inner.precision
 
       override def apply(canvas: Tensor, content: Tensor): Trainable = new SumTrainable(
-        inner.apply(canvas, content),
+        inner.apply(canvas.addRef(), content.addRef()),
         value.apply(canvas, content)
       )
     }
@@ -71,7 +71,7 @@ trait VisualNetwork {
         }
 
         override def getLayer: Layer = {
-          innerTrainable.getLayer
+          innerTrainable.getLayer().addRef().asInstanceOf[Layer]
         }
       }
     }

@@ -47,7 +47,9 @@ class JpgRegistration
     logger.info("Writing " + key)
     val metadata = new ObjectMetadata()
     metadata.setContentType("image/jpeg")
-    s3client.putObject(new PutObjectRequest(bucket, key, toStream(canvas.toImage), metadata)
+    val image = canvas.toImage
+    canvas.freeRef()
+    s3client.putObject(new PutObjectRequest(bucket, key, toStream(image), metadata)
       .withCannedAcl(CannedAccessControlList.PublicRead))
     s"http://$bucket/$key"
   }

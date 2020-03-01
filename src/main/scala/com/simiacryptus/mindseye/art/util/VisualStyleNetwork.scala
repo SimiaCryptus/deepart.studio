@@ -141,6 +141,7 @@ object VisualStyleNetwork {
   def pixels(canvas: Tensor) = {
     if (null == canvas) 0 else {
       val dimensions = canvas.getDimensions
+      canvas.freeRef()
       val pixels = dimensions(0) * dimensions(1)
       pixels
     }
@@ -164,22 +165,32 @@ case class VisualStyleNetwork
 )(implicit override val log: NotebookOutput) extends ImageSource(styleUrl) with VisualNetwork {
 
   def apply(canvas: Tensor, content: Tensor = null): Trainable = {
-    val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas))
-    val grouped = styleLayers.groupBy(_.getPipelineName).mapValues(pipelineLayers => {
-      SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(pipelineLayer =>
-        styleModifiers.reduce(_ combine _).build(pipelineLayer, null, null, RefUtil.addRef(loadedImages): _*)): _*)
-    }).toArray.toMap
-    RefUtil.freeRef(loadedImages)
-    new SumTrainable((grouped.values.toList.map(styleNetwork => {
-      new TiledTrainable(canvas, viewLayer(canvas.getDimensions()), tileSize, tilePadding, precision) {
-        override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
-          regionSelector.freeRef()
-          val network = styleNetwork.addRef()
-          MultiPrecision.setPrecision(network, precision)
-          network
+    content.freeRef()
+    val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas.addRef()))
+    try {
+      new SumTrainable(styleLayers.groupBy(_.getPipelineName).mapValues(pipelineLayers => {
+        SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(pipelineLayer =>
+          styleModifiers.reduce(_ combine _).build(pipelineLayer, null, null, RefUtil.addRef(loadedImages): _*)): _*)
+      }).values.map(styleNetwork => {
+        val dimensions = canvas.getDimensions()
+        new TiledTrainable(canvas.addRef(), viewLayer(dimensions), tileSize, tilePadding, precision) {
+          override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
+            regionSelector.freeRef()
+            val network = styleNetwork.addRef()
+            MultiPrecision.setPrecision(network.addRef(), precision)
+            network
+          }
+
+          override def _free(): Unit = {
+            styleNetwork.freeRef()
+            super._free()
+          }
         }
-      }
-    })): _*)
+      }).toArray: _*)
+    } finally {
+      RefUtil.freeRef(loadedImages)
+      canvas.freeRef()
+    }
   }
 
   def withContent(

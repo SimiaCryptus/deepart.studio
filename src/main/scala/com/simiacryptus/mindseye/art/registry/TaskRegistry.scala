@@ -72,13 +72,13 @@ trait TaskRegistry {
     ).start()(s3client, ec2client)) else None
   }
 
-  def registerWithIndexJPG(canvas: => Tensor)(implicit log: NotebookOutput): Option[JobRegistration[Tensor]] = {
+  def registerWithIndexJPG(canvas: () => Tensor)(implicit log: NotebookOutput): Option[JobRegistration[Tensor]] = {
     val archiveHome = log.getArchiveHome
     if (!s3bucket.isEmpty && null != archiveHome) Option(new JpgRegistration(
       bucket = s3bucket.split("/").head,
       reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getId() + ".html",
       liveUrl = s"http://${EC2Util.publicHostname()}:1080/",
-      canvas = () => canvas,
+      canvas = canvas,
       indexFile = indexFile,
       className = className,
       indexStr = indexStr,
