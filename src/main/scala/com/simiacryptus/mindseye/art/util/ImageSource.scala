@@ -25,21 +25,27 @@ import com.simiacryptus.notebook.NotebookOutput
 
 import scala.util.Random
 
-class ImageSource(urls: Seq[String])(implicit val log: NotebookOutput) {
+class ImageSource(urls: Seq[String], urls2: Option[String] = None)(implicit val log: NotebookOutput) {
   def tileSize: Int = 400
 
   def tilePadding: Int = 16
 
   def loadImages(canvasPixels: Int): Array[Tensor] = {
-    val styles = Random.shuffle(urls.toList).map(styleUrl => {
-      var styleImage = ImageArtUtil.load(log, styleUrl, -1)
-      val stylePixels = styleImage.getWidth * styleImage.getHeight
-      var finalWidth = if (canvasPixels > 0) (styleImage.getWidth * Math.sqrt((canvasPixels.toDouble / stylePixels) * magnification)).toInt else -1
-      if (finalWidth < minWidth && finalWidth > 0) finalWidth = minWidth
-      if (finalWidth > Math.min(maxWidth, styleImage.getWidth)) finalWidth = Math.min(maxWidth, styleImage.getWidth)
-      val resized = ImageUtil.resize(styleImage, finalWidth, true)
-      Tensor.fromRGB(resized)
-    }).toBuffer
+    val images = if (urls2.isDefined) {
+      Random.shuffle(ImageArtUtil.loadImages(log, urls2.get, -1).toList)
+    } else {
+      Random.shuffle(urls.toList)
+        .map(ImageArtUtil.loadImage(log, _, -1))
+    }
+    val styles = images
+      .map(styleImage => {
+        val stylePixels = styleImage.getWidth * styleImage.getHeight
+        var finalWidth = if (canvasPixels > 0) (styleImage.getWidth * Math.sqrt((canvasPixels.toDouble / stylePixels) * magnification)).toInt else -1
+        if (finalWidth < minWidth && finalWidth > 0) finalWidth = minWidth
+        if (finalWidth > Math.min(maxWidth, styleImage.getWidth)) finalWidth = Math.min(maxWidth, styleImage.getWidth)
+        val resized = ImageUtil.resize(styleImage, finalWidth, true)
+        Tensor.fromRGB(resized)
+      }).toBuffer
     require(!styles.isEmpty)
     while (styles.map(_.getDimensions).map(d => d(0) * d(1)).sum > maxPixels) styles.remove(0)
     require(!styles.isEmpty)

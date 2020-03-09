@@ -23,7 +23,6 @@ import java.io.File
 import java.net.{URI, URLEncoder}
 import java.text.Normalizer
 import java.util
-import java.util.concurrent.atomic.AtomicReference
 
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2ClientBuilder}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
@@ -46,6 +45,7 @@ import com.simiacryptus.util.FastRandom
 import org.apache.commons.io.{FileUtils, IOUtils}
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 
 object ArtSetup {
@@ -100,10 +100,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     getPaintings(new URI("https://www.wikiart.org/en/search/" + URLEncoder.encode(searchWord, "UTF-8").replaceAllLiterally("+", "%20") + "/1?json=2"), minWidth, 100)
   }
 
-  def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
-    getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
-  }
-
   def getPaintings(uri: URI, minWidth: Int, maxResults: Int): Array[String] = {
     new GsonBuilder().create().fromJson(IOUtils.toString(
       uri,
@@ -131,8 +127,8 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       }).filterNot(_.isEmpty).toArray
   }
 
-  def paintEveryOther(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, resolutions: Double*)(implicit sub: NotebookOutput) = {
-    animate(contentUrl = contentUrl, initUrl = initUrl, canvases = canvases, networks = networks, optimizer = optimizer, resolutions = resolutions, seq = binaryFill((0 until networks.size).toList), renderingFn = renderingFn, delay = 100)
+  def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
+    getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
   }
 
   def binaryFill(seq: List[Int]): List[Int] = {
@@ -145,11 +141,17 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     }
   }
 
-  def paintOrdered(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, renderingFn: Seq[Int] => PipelineNetwork, resolutions: Double*)(implicit sub: NotebookOutput) = {
-    animate(contentUrl, initUrl, canvases, networks, optimizer, resolutions, (0 until networks.size).toList, renderingFn, delay = 100)
-  }
-
-  def animate(contentUrl: String, initUrl: String, canvases: Seq[AtomicReference[Tensor]], networks: List[(String, VisualNetwork)], optimizer: BasicOptimizer, resolutions: Seq[Double], seq: List[Int] = List.empty, renderingFn: Seq[Int] => PipelineNetwork = null, delay: Int = 100)(implicit log: NotebookOutput) = {
+  def animate
+  (
+    contentUrl: String,
+    initUrl: String,
+    canvases: mutable.Buffer[RefAtomicReference[Tensor]],
+    networks: mutable.Buffer[(String, VisualNetwork)],
+    optimizer: BasicOptimizer,
+    resolutions: Seq[Double],
+    renderingFn: Seq[Int] => PipelineNetwork = null,
+    delay: Int = 100
+  )(implicit log: NotebookOutput) = {
     for (res <- resolutions) {
       log.h1("Resolution " + res)
       NotebookRunner.withMonitoredGif(() => {
@@ -157,21 +159,23 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
           if (null == renderingFn) {
             tensor
           } else {
-            val result = renderingFn(tensor.getDimensions).eval(tensor)
-            val data = result.getData
-            val tensor1 = data.get(0)
-            data.freeRef()
+            val renderer = renderingFn(tensor.getDimensions)
+            val result = renderer.eval(tensor)
+            renderer.freeRef()
+            val tensorList = result.getData
             result.freeRef()
-            tensor1
+            val data = tensorList.get(0)
+            tensorList.freeRef()
+            data
           }
         }))
       }, delay = delay) {
-        for (i <- if (seq.isEmpty) (0 until networks.size) else seq) {
+        for (i <- binaryFill((0 until networks.size).toList)) {
           val (name, network) = networks(i)
           log.h2(name)
           val canvas = canvases(i)
           CudaSettings.INSTANCE().defaultPrecision = network.precision
-          val content = ImageArtUtil.load(log, contentUrl, res.toInt)
+          val content = ImageArtUtil.loadImage(log, contentUrl, res.toInt)
           if (null == canvas.get) {
             implicit val nullNotebookOutput = new NullNotebookOutput()
             val l = canvases.zipWithIndex.take(i).filter(_._1.get() != null).lastOption
@@ -188,10 +192,19 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
             canvas.set(Tensor.fromRGB(ImageUtil.resize(canvas.get.toRgbImage, content.getWidth, content.getHeight)))
           }
           val trainable = network(canvas.get, Tensor.fromRGB(content))
-          ArtUtil.resetPrecision(trainable, network.precision)
+          ArtUtil.resetPrecision(trainable.addRef().asInstanceOf[Trainable], network.precision)
           optimizer.optimize(canvas.get, trainable)
         }
       }
+      val canvasSize = canvases.size
+      (1 until canvasSize).reverse.foreach(canvases.insert(_, new RefAtomicReference[Tensor]()))
+      val networkSize = networks.size
+      (1 until networkSize).reverse.foreach(i => {
+        val after = networks(i)
+        val before = networks(i - 1)
+        val avg = (after._1.toDouble + before._1.toDouble) / 2
+        networks.insert(i, (avg.toString, after._2))
+      })
     }
   }
 
@@ -202,6 +215,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     canvas: RefAtomicReference[Tensor],
     network: VisualNetwork,
     optimizer: BasicOptimizer,
+    aspect: Option[Double],
     resolutions: Double*
   )(implicit sub: NotebookOutput): Double = paint(
     contentUrl = contentUrl,
@@ -209,6 +223,24 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     canvas = canvas,
     network = network,
     optimizer = optimizer,
+    aspect = aspect,
+    resolutions = resolutions)
+
+  def paint_single
+  (
+    contentUrl: String,
+    initFn: Tensor => Tensor,
+    canvas: RefAtomicReference[Tensor],
+    network: VisualNetwork,
+    optimizer: BasicOptimizer,
+    resolutions: Double*
+  )(implicit log: NotebookOutput): Double = paint(
+    contentUrl = contentUrl,
+    initFn = initFn,
+    canvas = canvas,
+    network = network,
+    optimizer = optimizer,
+    renderingFn = x => new PipelineNetwork(1),
     resolutions = resolutions)
 
   def paint
@@ -219,13 +251,18 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     network: VisualNetwork,
     optimizer: BasicOptimizer,
     resolutions: Seq[Double],
-    renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1)
+    renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1),
+    aspect: Option[Double] = None
   )(implicit log: NotebookOutput): Double = {
     def prep(res: Double) = {
       CudaSettings.INSTANCE().defaultPrecision = network.precision
-      var content = ImageArtUtil.load(log, contentUrl, res.toInt)
+      var content = if (aspect.isDefined) {
+        ImageArtUtil.loadImage(log, contentUrl, res.toInt, (aspect.get * res).toInt)
+      } else {
+        ImageArtUtil.loadImage(log, contentUrl, res.toInt)
+      }
       val contentTensor = if (null == content) {
-        new Tensor(res.toInt, res.toInt, 3).map((x: Double) => FastRandom.INSTANCE.random())
+        new Tensor(res.toInt, (aspect.getOrElse(1.0) * res).toInt, 3).map((x: Double) => FastRandom.INSTANCE.random())
       } else {
         Tensor.fromRGB(content)
       }
@@ -264,23 +301,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     canvas.freeRef()
   }
 
-  def paint_single
-  (
-    contentUrl: String,
-    initFn: Tensor => Tensor,
-    canvas: RefAtomicReference[Tensor],
-    network: VisualNetwork,
-    optimizer: BasicOptimizer,
-    resolutions: Double*
-  )(implicit log: NotebookOutput): Double = paint(
-    contentUrl = contentUrl,
-    initFn = initFn,
-    canvas = canvas,
-    network = network,
-    optimizer = optimizer,
-    renderingFn = x => new PipelineNetwork(1),
-    resolutions = resolutions)
-
   def paint_single_view
   (
     contentUrl: String,
@@ -299,11 +319,11 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     renderingFn = renderingFn,
     resolutions = resolutions)
 
-  def texture(aspectRatio: Double, initUrl: String, canvas: AtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Seq[Double])(implicit log: NotebookOutput): Double = {
+  def texture(aspectRatio: Double, initUrl: String, canvas: RefAtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Seq[Double])(implicit log: NotebookOutput): Double = {
     def prep(width: Double) = {
       CudaSettings.INSTANCE().defaultPrecision = network.precision
       val height = width * aspectRatio
-      var content = ImageArtUtil.load(log, initUrl, width.toInt, height.toInt)
+      var content = ImageArtUtil.loadImage(log, initUrl, width.toInt, height.toInt)
       val contentTensor = if (null == content) {
         new Tensor(width.toInt, height.toInt, 3).map((x: Double) => FastRandom.INSTANCE.random())
       } else {
@@ -325,7 +345,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       val currentCanvas: Tensor = updateCanvas(canvas.get())
       canvas.set(currentCanvas)
       val trainable = network.apply(currentCanvas, contentTensor)
-      ArtUtil.resetPrecision(trainable, network.precision)
+      ArtUtil.resetPrecision(trainable.addRef().asInstanceOf[Trainable], network.precision)
       (currentCanvas, trainable)
     }
 

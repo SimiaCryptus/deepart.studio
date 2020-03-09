@@ -42,7 +42,6 @@ import com.simiacryptus.mindseye.opt.{IterativeTrainer, Step, TrainingMonitor}
 import com.simiacryptus.mindseye.test.{StepRecord, TestUtil}
 import com.simiacryptus.mindseye.util.ImageUtil
 import com.simiacryptus.notebook._
-import com.simiacryptus.ref.wrappers.RefArrayList
 import com.simiacryptus.sparkbook.NotebookRunner
 import com.simiacryptus.sparkbook.util.Java8Util._
 import com.simiacryptus.util.Util
@@ -67,7 +66,7 @@ object ArtUtil {
         (for ((url, v) <- getValue.toList.filter(_._2)) yield {
           val filename = url.split('/').last.toLowerCase.stripSuffix(".png") + ".png"
           if (pngCache.getOrElseUpdate(url, Try {
-            log.pngFile(ImageArtUtil.load(log, url, 256), new File(log.getResourceDir, filename))
+            log.pngFile(ImageArtUtil.loadImage(log, url, 256), new File(log.getResourceDir, filename))
           }).isSuccess) {
             s"""<input type="checkbox" name="${ids(url)}" value="true"><img src="etc/$filename" alt="$url"><br/>"""
           } else {
@@ -103,7 +102,7 @@ object ArtUtil {
       case trainable: TiledTrainable =>
         trainable.setPrecision(precision)
         trainable.freeRef()
-      case trainable: Trainable  =>
+      case trainable: Trainable =>
         val layer = trainable.getLayer
         if (null != layer) {
           MultiPrecision.setPrecision(layer.asInstanceOf[DAGNetwork], precision)
@@ -113,9 +112,9 @@ object ArtUtil {
     }
   }
 
-  def pipelineGraphs(pipeline: VisionPipeline[VisionPipelineLayer])(implicit log: NotebookOutput) = {
+  def pipelineGraphs(pipeline: VisionPipeline)(implicit log: NotebookOutput) = {
     log.subreport(pipeline.name + "_Layers", (sublog: NotebookOutput) => {
-      pipeline.getLayers().keys.foreach(layer => {
+      pipeline.getLayerList().foreach(layer => {
         sublog.h1(layer.name())
         TestUtil.graph(sublog, layer.getLayer.asInstanceOf[PipelineNetwork])
       })
@@ -124,7 +123,11 @@ object ArtUtil {
   }
 
   def cyclicalAnimation(canvases: => Seq[Tensor]): Seq[BufferedImage] = {
-    val list = canvases.filter(_ != null).map(_.toRgbImage)
+    val list = canvases.filter(_ != null).map(tensor => {
+      val image = tensor.toRgbImage
+      tensor.freeRef()
+      image
+    })
     if (list.isEmpty) {
       Seq.empty
     } else {
@@ -184,13 +187,15 @@ object ArtUtil {
     val search = new QuadraticSearch().setCurrentRate(1e0).setMaxRate(1e3).setRelativeTolerance(1e-2)
     val trainer = new IterativeTrainer(trainable_color)
     trainer.setOrientation(new TrustRegionStrategy() {
-        override def getRegionPolicy(layer: Layer): TrustRegion = layer match {
-          case null => null
-          case layer if layer.isFrozen => null
-          case layer: SimpleConvolutionLayer => new OrthonormalConstraint(ImageArtUtil.getIndexMap(layer): _*)
-          case _ => null
-        }
-      });
+      override def getRegionPolicy(layer: Layer): TrustRegion = layer match {
+        case null => null
+        case layer if layer.isFrozen =>
+          layer.freeRef()
+          null
+        case layer: SimpleConvolutionLayer => new OrthonormalConstraint(ImageArtUtil.getIndexMap(layer): _*)
+        case _ => null
+      }
+    });
     trainer.setMonitor(trainingMonitor)
     trainer.setTimeout(5, TimeUnit.MINUTES)
     trainer.setMaxIterations(3)
@@ -198,6 +203,25 @@ object ArtUtil {
     trainer.setTerminateThreshold(0)
     trainer.run
     colorAdjustmentLayer
+  }
+
+  def getTrainingMonitor[T](history: util.ArrayList[StepRecord] = new util.ArrayList[StepRecord], verbose: Boolean = true): TrainingMonitor = {
+    val trainingMonitor = new TrainingMonitor() {
+      override def clear(): Unit = {
+        super.clear()
+      }
+
+      override def log(msg: String): Unit = {
+        if (verbose) com.simiacryptus.ref.wrappers.RefSystem.out.println(msg)
+        super.log(msg)
+      }
+
+      override def onStepComplete(currentPoint: Step): Unit = {
+        history.add(new StepRecord(currentPoint.point.getMean, currentPoint.time, currentPoint.iteration))
+        super.onStepComplete(currentPoint)
+      }
+    }
+    trainingMonitor
   }
 
   def imageGrid(currentImage: BufferedImage, columns: Int = 2, rows: Int = 2) = Option(currentImage).map(tensor => {
@@ -220,28 +244,7 @@ object ArtUtil {
     }
   }
 
-  def getTrainingMonitor[T](history: util.ArrayList[StepRecord] = new util.ArrayList[StepRecord], verbose: Boolean = true): TrainingMonitor = {
-    val trainingMonitor = new TrainingMonitor() {
-      override def clear(): Unit = {
-        super.clear()
-      }
-
-      override def log(msg: String): Unit = {
-        if (verbose) com.simiacryptus.ref.wrappers.RefSystem.out.println(msg)
-        super.log(msg)
-      }
-
-      override def onStepComplete(currentPoint: Step): Unit = {
-        history.add(new StepRecord(currentPoint.point.getMean, currentPoint.time, currentPoint.iteration))
-        super.onStepComplete(currentPoint)
-      }
-    }
-    trainingMonitor
-  }
-
   def findFiles(key: String, base: String): Array[String] = findFiles(Set(key), base)
-
-  def findFiles(key: String): Array[String] = findFiles(Set(key))
 
   def findFiles(key: Set[String], base: String = "s3a://data-cb03c/crawl/wikiart/", minSize: Int = 32 * 1024): Array[String] = {
     val itr = FileSystem.get(new URI(base), ImageArtUtil.getHadoopConfig()).listFiles(new Path(base), true)
@@ -253,5 +256,7 @@ object ArtUtil {
     }
     buffer.toArray
   }
+
+  def findFiles(key: String): Array[String] = findFiles(Set(key))
 
 }

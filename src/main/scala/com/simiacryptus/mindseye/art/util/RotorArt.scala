@@ -21,13 +21,38 @@ package com.simiacryptus.mindseye.art.util
 
 import com.simiacryptus.mindseye.layers.java.{BoundedActivationLayer, ImgViewLayer, LinearActivationLayer, SumInputsLayer}
 import com.simiacryptus.mindseye.network.PipelineNetwork
+import com.simiacryptus.notebook.NotebookOutput
 
-abstract class RotorArt
-(
-  val rotationalSegments: Int = 3
-) extends ArtSetup[Object] {
+abstract class RotorArt(
+                         val rotationalSegments: Int = 3
+                       ) extends ArtSetup[Object] {
 
   val rotationalChannelPermutation: Array[Int] = Permutation.random(3, rotationalSegments)
+
+  override def reference(log: NotebookOutput): Unit = {
+    val l2 = Permutation.rings(3).toList.sortBy(_._1).map(t => {
+      val permutations = t._2.map(x => x.head).toList.sortBy(_.indices.sum).map(x => x.indices.map(_.toString).reduce(_ + "," + _))
+      <li>
+        Order:
+        {t._1}<br/>
+        <ul>
+          {permutations.map(p => {
+          <li>
+            {p}
+          </li>
+        }).toList}
+        </ul>
+      </li>
+    })
+    log.out(<div>
+      <h2>Color Permutations:</h2> <ol>
+        {l2}
+      </ol> <h2>Tiling Aspect Ratios:</h2> <ol>
+        <li>Triangular or Hexagonal: 1.732 or 0.5774</li>
+        <li>Square: 1.0</li>
+      </ol>
+    </div>.toString())
+  }
 
   def getKaleidoscope(canvasDims: Array[Int]) = {
     val permutation = Permutation(this.rotationalChannelPermutation: _*)

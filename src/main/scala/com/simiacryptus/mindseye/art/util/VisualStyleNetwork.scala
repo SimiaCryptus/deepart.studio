@@ -154,6 +154,7 @@ case class VisualStyleNetwork
   styleLayers: Seq[VisionPipelineLayer] = Seq.empty,
   styleModifiers: Seq[VisualModifier] = Seq.empty,
   styleUrl: Seq[String] = Seq.empty,
+  styleUrls: Option[String] = None,
   precision: Precision = Precision.Float,
   viewLayer: Seq[Int] => Layer = _ => new PipelineNetwork(1),
   override val tileSize: Int = 1200,
@@ -162,7 +163,7 @@ case class VisualStyleNetwork
   override val maxWidth: Int = 10000,
   override val maxPixels: Double = 5e8,
   override val magnification: Double = 1.0
-)(implicit override val log: NotebookOutput) extends ImageSource(styleUrl) with VisualNetwork {
+)(implicit override val log: NotebookOutput) extends ImageSource(styleUrl, styleUrls) with VisualNetwork {
 
   def apply(canvas: Tensor, content: Tensor = null): Trainable = {
     content.freeRef()
@@ -200,6 +201,7 @@ case class VisualStyleNetwork
     styleLayers = styleLayers,
     styleModifiers = styleModifiers,
     styleUrl = styleUrl,
+    styleUrls = styleUrls,
     precision = precision,
     viewLayer = viewLayer,
     contentLayers = contentLayers,

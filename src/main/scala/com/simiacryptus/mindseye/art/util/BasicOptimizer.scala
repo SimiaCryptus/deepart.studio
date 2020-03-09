@@ -54,7 +54,7 @@ trait BasicOptimizer extends Logging {
 
       withMonitoredJpg[Double](() => currentImage) {
         log.subreport("Optimization", (sub: NotebookOutput) => {
-          optimize(()=>currentImage, trainable)(sub).asInstanceOf[java.lang.Double]
+          optimize(() => currentImage, trainable)(sub).asInstanceOf[java.lang.Double]
         })
       }
     } finally {
@@ -90,29 +90,29 @@ trait BasicOptimizer extends Logging {
           val trainer = new IterativeTrainer(trainable)
           trainer.setOrientation(orientation())
           trainer.setMonitor(new TrainingMonitor() {
-              override def clear(): Unit = trainingMonitor.clear()
+            override def clear(): Unit = trainingMonitor.clear()
 
-              override def log(msg: String): Unit = {
-                trainingMonitor.log(msg)
-                BasicOptimizer.this.log(msg)
-              }
+            override def log(msg: String): Unit = {
+              trainingMonitor.log(msg)
+              BasicOptimizer.this.log(msg)
+            }
 
-              override def onStepFail(currentPoint: Step): Boolean = {
-                BasicOptimizer.this.onStepFail(trainable.addRef().asInstanceOf[Trainable], currentPoint)
-              }
+            override def onStepFail(currentPoint: Step): Boolean = {
+              BasicOptimizer.this.onStepFail(trainable.addRef().asInstanceOf[Trainable], currentPoint)
+            }
 
-              override def onStepComplete(currentPoint: Step): Unit = {
-                if (0 < logEvery && (0 == currentPoint.iteration % logEvery || currentPoint.iteration < logEvery)) {
-                  val image = currentImage()
-                  timelineAnimation += image
-                  val caption = "Iteration " + currentPoint.iteration
-                  out.p(caption + "\n" + out.jpg(image, caption))
-                }
-                BasicOptimizer.this.onStepComplete(trainable.addRef().asInstanceOf[Trainable], currentPoint)
-                trainingMonitor.onStepComplete(currentPoint)
-                super.onStepComplete(currentPoint)
+            override def onStepComplete(currentPoint: Step): Unit = {
+              if (0 < logEvery && (0 == currentPoint.iteration % logEvery || currentPoint.iteration < logEvery)) {
+                val image = currentImage()
+                timelineAnimation += image
+                val caption = "Iteration " + currentPoint.iteration
+                out.p(caption + "\n" + out.jpg(image, caption))
               }
-            })
+              BasicOptimizer.this.onStepComplete(trainable.addRef().asInstanceOf[Trainable], currentPoint)
+              trainingMonitor.onStepComplete(currentPoint)
+              super.onStepComplete(currentPoint)
+            }
+          })
           trainer.setTimeout(trainingMinutes, TimeUnit.MINUTES)
           trainer.setMaxIterations(trainingIterations)
           trainer.setLineSearchFactory((_: CharSequence) => lineSearchInstance)
@@ -161,7 +161,7 @@ trait BasicOptimizer extends Logging {
     //      //                  .groupBy(_.getCoords()(2)).values
     //      //                  .toArray.map(_.map(_.getIndex).toArray): _*),
     //    )
-    layer.freeRef()
+    if (null != layer) layer.freeRef()
     new RangeConstraint().setMin(0).setMax(256)
   }
 

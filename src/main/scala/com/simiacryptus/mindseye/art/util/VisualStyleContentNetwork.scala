@@ -27,6 +27,7 @@ import com.simiacryptus.mindseye.lang.{Layer, Tensor}
 import com.simiacryptus.mindseye.layers.java.{AssertDimensionsLayer, SumInputsLayer}
 import com.simiacryptus.mindseye.network.PipelineNetwork
 import com.simiacryptus.notebook.NotebookOutput
+import com.simiacryptus.ref.lang.RefUtil
 
 object VisualStyleContentNetwork {
 
@@ -40,6 +41,7 @@ case class VisualStyleContentNetwork
   contentLayers: Seq[VisionPipelineLayer] = Seq.empty,
   contentModifiers: Seq[VisualModifier] = List(new ContentMatcher),
   styleUrl: Seq[String] = Seq.empty,
+  styleUrls: Option[String] = None,
   precision: Precision = Precision.Float,
   viewLayer: Seq[Int] => Layer = _ => new PipelineNetwork(1),
   override val tileSize: Int = 1200,
@@ -48,7 +50,7 @@ case class VisualStyleContentNetwork
   override val maxWidth: Int = 2048,
   override val maxPixels: Double = 5e7,
   override val magnification: Double = 1.0
-)(implicit override val log: NotebookOutput) extends ImageSource(styleUrl) with VisualNetwork {
+)(implicit override val log: NotebookOutput) extends ImageSource(styleUrl, styleUrls) with VisualNetwork {
 
   def apply(canvas: Tensor, content: Tensor): Trainable = {
     val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas.addRef()))
@@ -103,7 +105,7 @@ case class VisualStyleContentNetwork
       val layers = pipelineLayers.flatMap(x => Option(x._2).toList.flatten)
       if (layers.isEmpty) null
       else SumInputsLayer.combine(layers.map(styleLayer => {
-        val network = styleModifier.build(styleLayer, null, null, loadedImages: _*)
+        val network = styleModifier.build(styleLayer, null, null, RefUtil.addRef(loadedImages): _*)
         val layer = new AssertDimensionsLayer(1)
         layer.setName(s"$styleModifier - $styleLayer")
         network.add(layer).freeRef()
@@ -136,14 +138,15 @@ case class VisualStyleContentNetwork
           val network = SumInputsLayer.combine({
             Option(styleNetwork).map(_.addRef()).toList ++ contentLayers.filter(x => x.getPipelineName == name)
               .map(contentLayer => {
+                val name = s"$contentModifier - $contentLayer"
                 val network = contentModifier.build(contentLayer, contentDims, regionSelector.asTensorFunction(), selection)
                 val layer = new AssertDimensionsLayer(1)
-                layer.setName(s"$contentModifier - $contentLayer")
+                layer.setName(name)
                 network.add(layer).freeRef()
                 network
               })
           }: _*)
-          MultiPrecision.setPrecision(network, precision)
+          MultiPrecision.setPrecision(network.addRef(), precision)
           regionSelector.freeRef()
           network
         }
