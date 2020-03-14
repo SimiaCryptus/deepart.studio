@@ -60,7 +60,11 @@ trait TaskRegistry {
       reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getId() + ".html",
       liveUrl = s"http://${EC2Util.publicHostname()}:1080/",
       canvas = () => {
-        val list = canvas.filter(_ != null).map(_.toImage)
+        val list = canvas.filter(_ != null).map(tensor => {
+          val image = tensor.toImage
+          tensor.freeRef()
+          image
+        })
         val maxWidth = list.map(_.getWidth).max
         ArtUtil.cyclical(list.map(ImageUtil.resize(_, maxWidth, true)))
       },

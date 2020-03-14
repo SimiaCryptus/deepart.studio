@@ -73,17 +73,17 @@ abstract class JobRegistration[T]
   }
 
   def upload()(implicit s3client: AmazonS3) = {
-    logger.info("Writing " + JobRegistry(
+    Option(canvas()).foreach(img=>logger.info("Writing " + JobRegistry(
       reportUrl = reportUrl,
       liveUrl = liveUrl,
       lastReport = com.simiacryptus.ref.wrappers.RefSystem.currentTimeMillis(),
       instances = List(EC2Util.instanceId()),
-      image = uploadImage(canvas()),
+      image = uploadImage(img),
       id = id,
       className = className,
       indexStr = indexStr,
       description = description
-    ).save(bucket))
+    ).save(bucket)))
   }
 
   def rebuildIndex()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {

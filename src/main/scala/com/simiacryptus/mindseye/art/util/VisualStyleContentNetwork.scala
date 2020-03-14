@@ -102,10 +102,10 @@ case class VisualStyleContentNetwork
     val contentDims = content.getDimensions()
     val canvasDims = canvas.getDimensions
     val grouped: Map[String, PipelineNetwork] = ((contentLayers.map(_.getPipelineName -> null) ++ styleLayers.groupBy(_.getPipelineName).toList).groupBy(_._1).mapValues(pipelineLayers => {
-      val layers = pipelineLayers.flatMap(x => Option(x._2).toList.flatten)
+      val layers: Seq[VisionPipelineLayer] = pipelineLayers.flatMap(x => Option(x._2).toList.flatten)
       if (layers.isEmpty) null
       else SumInputsLayer.combine(layers.map(styleLayer => {
-        val network = styleModifier.build(styleLayer, null, null, RefUtil.addRef(loadedImages): _*)
+        val network = styleModifier.build(styleLayer.addRef(), null, null, RefUtil.addRef(loadedImages): _*)
         val layer = new AssertDimensionsLayer(1)
         layer.setName(s"$styleModifier - $styleLayer")
         network.add(layer).freeRef()
@@ -132,20 +132,21 @@ case class VisualStyleContentNetwork
         override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
           val result = regionSelector.eval(contentView.addRef())
           val data = result.getData
+          result.freeRef()
           val selection = data.get(0)
           data.freeRef()
-          result.freeRef()
           val network = SumInputsLayer.combine({
-            Option(styleNetwork).map(_.addRef()).toList ++ contentLayers.filter(x => x.getPipelineName == name)
+            Option(styleNetwork).map(_.addRef()).toList ++ contentLayers.filter(x => x != null && x.getPipelineName == name)
               .map(contentLayer => {
                 val name = s"$contentModifier - $contentLayer"
-                val network = contentModifier.build(contentLayer, contentDims, regionSelector.asTensorFunction(), selection)
+                val network = contentModifier.build(contentLayer.addRef(), contentDims, regionSelector.asTensorFunction(), selection.addRef())
                 val layer = new AssertDimensionsLayer(1)
                 layer.setName(name)
                 network.add(layer).freeRef()
                 network
               })
           }: _*)
+          selection.freeRef()
           MultiPrecision.setPrecision(network.addRef(), precision)
           regionSelector.freeRef()
           network
@@ -183,9 +184,9 @@ case class VisualStyleContentNetwork
         result.freeRef()
         val network = SumInputsLayer.combine({
           contentLayers.filter(x => x.getPipelineName == name).map(contentLayer => {
-            contentModifier.build(contentLayer, contentDims, regionFn, contentRegion)
+            contentModifier.build(contentLayer.addRef(), contentDims, regionFn, contentRegion)
           }) ++ styleLayers.filter(x => x.getPipelineName == name).map(styleLayer => {
-            styleModifier.build(styleLayer, contentDims, regionFn, loadedImages: _*)
+            styleModifier.build(styleLayer.addRef(), contentDims, regionFn, loadedImages: _*)
           })
         }: _*)
         MultiPrecision.setPrecision(network, precision)

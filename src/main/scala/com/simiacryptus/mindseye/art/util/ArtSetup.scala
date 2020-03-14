@@ -146,10 +146,13 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     contentUrl: String,
     initUrl: String,
     canvases: mutable.Buffer[RefAtomicReference[Tensor]],
-    networks: mutable.Buffer[(String, VisualNetwork)],
+    networks: mutable.Buffer[(Double, VisualNetwork)],
     optimizer: BasicOptimizer,
     resolutions: Seq[Double],
     renderingFn: Seq[Int] => PipelineNetwork = null,
+    getParams: (mutable.Buffer[(Double, VisualNetwork)], Double) => VisualNetwork = (networks: mutable.Buffer[(Double, VisualNetwork)], x:Double) => {
+      networks.head._2
+    },
     delay: Int = 100
   )(implicit log: NotebookOutput) = {
     for (res <- resolutions) {
@@ -172,7 +175,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       }, delay = delay) {
         for (i <- binaryFill((0 until networks.size).toList)) {
           val (name, network) = networks(i)
-          log.h2(name)
+          log.h2(name.toString)
           val canvas = canvases(i)
           CudaSettings.INSTANCE().defaultPrecision = network.precision
           val content = ImageArtUtil.loadImage(log, contentUrl, res.toInt)
@@ -203,7 +206,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
         val after = networks(i)
         val before = networks(i - 1)
         val avg = (after._1.toDouble + before._1.toDouble) / 2
-        networks.insert(i, (avg.toString, after._2))
+        networks.insert(i, (avg, getParams(networks, avg)))
       })
     }
   }
@@ -216,7 +219,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     network: VisualNetwork,
     optimizer: BasicOptimizer,
     aspect: Option[Double],
-    resolutions: Double*
+    resolutions: Seq[Double]
   )(implicit sub: NotebookOutput): Double = paint(
     contentUrl = contentUrl,
     initFn = load(_, initUrl),
@@ -262,10 +265,14 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
         ImageArtUtil.loadImage(log, contentUrl, res.toInt)
       }
       val contentTensor = if (null == content) {
-        new Tensor(res.toInt, (aspect.getOrElse(1.0) * res).toInt, 3).map((x: Double) => FastRandom.INSTANCE.random())
+        val tensor = new Tensor(res.toInt, (aspect.getOrElse(1.0) * res).toInt, 3)
+        val map = tensor.map((x: Double) => FastRandom.INSTANCE.random())
+        tensor.freeRef()
+        map
       } else {
         Tensor.fromRGB(content)
       }
+      contentTensor.watch()
       if (null == content) content = contentTensor.toImage
 
       def updateCanvas(currentCanvas: Tensor) = {

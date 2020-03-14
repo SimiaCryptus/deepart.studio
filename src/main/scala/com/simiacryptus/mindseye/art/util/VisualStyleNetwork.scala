@@ -157,7 +157,7 @@ case class VisualStyleNetwork
   styleUrls: Option[String] = None,
   precision: Precision = Precision.Float,
   viewLayer: Seq[Int] => Layer = _ => new PipelineNetwork(1),
-  override val tileSize: Int = 1200,
+  override val tileSize: Int = 1400,
   override val tilePadding: Int = 64,
   override val minWidth: Int = 1,
   override val maxWidth: Int = 10000,

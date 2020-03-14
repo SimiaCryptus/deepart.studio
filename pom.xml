@@ -24,8 +24,8 @@
     <parent>
         <groupId>com.simiacryptus</groupId>
         <artifactId>scala-parent</artifactId>
-        <version>1.8.1-SNAPSHOT</version>
-        <relativePath>../scala-parent</relativePath>
+        <version>2.0.0-SNAPSHOT</version>
+        <relativePath>../../mvn-parents/scala-parent</relativePath>
     </parent>
 
     <artifactId>deepartist.org</artifactId>
@@ -55,7 +55,7 @@
     <dependencies>
         <dependency>
             <groupId>com.twitter</groupId>
-            <artifactId>chill_2.11</artifactId>
+            <artifactId>chill_${scala.mjversion}</artifactId>
         </dependency>
         <dependency>
             <groupId>com.twitter</groupId>
@@ -130,12 +130,12 @@
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.11</artifactId>
+            <artifactId>spark-core_${scala.mjversion}</artifactId>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.11</artifactId>
+            <artifactId>spark-sql_${scala.mjversion}</artifactId>
             <scope>compile</scope>
         </dependency>
         <dependency>
