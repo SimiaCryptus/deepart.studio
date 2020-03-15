@@ -73,7 +73,7 @@ abstract class JobRegistration[T]
   }
 
   def upload()(implicit s3client: AmazonS3) = {
-    Option(canvas()).foreach(img=>logger.info("Writing " + JobRegistry(
+    Option(canvas()).foreach(img => logger.info("Writing " + JobRegistry(
       reportUrl = reportUrl,
       liveUrl = liveUrl,
       lastReport = com.simiacryptus.ref.wrappers.RefSystem.currentTimeMillis(),

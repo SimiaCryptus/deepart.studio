@@ -62,6 +62,8 @@ class Permutation(val indices: Array[Int]) {
 
   def unity = Permutation.unity(rank)
 
+  def rank: Int = indices.length
+
   def *(right: Permutation): Permutation = Permutation(this * right.indices: _*)
 
   def *(right: Array[Int]) = {
@@ -81,8 +83,6 @@ class Permutation(val indices: Array[Int]) {
     for ((x, y, v) <- tuples) matrix.setEntry(x, y, v)
     matrix
   }
-
-  def rank: Int = indices.length
 
   def ring = {
     List(this) ++ Stream.iterate(this)(_ * this).drop(1).takeWhile(_ != this)

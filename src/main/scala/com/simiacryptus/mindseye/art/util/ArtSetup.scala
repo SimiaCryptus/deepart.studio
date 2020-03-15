@@ -100,6 +100,10 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     getPaintings(new URI("https://www.wikiart.org/en/search/" + URLEncoder.encode(searchWord, "UTF-8").replaceAllLiterally("+", "%20") + "/1?json=2"), minWidth, 100)
   }
 
+  def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
+    getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
+  }
+
   def getPaintings(uri: URI, minWidth: Int, maxResults: Int): Array[String] = {
     new GsonBuilder().create().fromJson(IOUtils.toString(
       uri,
@@ -127,10 +131,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       }).filterNot(_.isEmpty).toArray
   }
 
-  def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
-    getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
-  }
-
   def binaryFill(seq: List[Int]): List[Int] = {
     if (seq.size < 3) seq
     else {
@@ -150,7 +150,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     optimizer: BasicOptimizer,
     resolutions: Seq[Double],
     renderingFn: Seq[Int] => PipelineNetwork = null,
-    getParams: (mutable.Buffer[(Double, VisualNetwork)], Double) => VisualNetwork = (networks: mutable.Buffer[(Double, VisualNetwork)], x:Double) => {
+    getParams: (mutable.Buffer[(Double, VisualNetwork)], Double) => VisualNetwork = (networks: mutable.Buffer[(Double, VisualNetwork)], x: Double) => {
       networks.head._2
     },
     delay: Int = 100
@@ -229,23 +229,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     aspect = aspect,
     resolutions = resolutions)
 
-  def paint_single
-  (
-    contentUrl: String,
-    initFn: Tensor => Tensor,
-    canvas: RefAtomicReference[Tensor],
-    network: VisualNetwork,
-    optimizer: BasicOptimizer,
-    resolutions: Double*
-  )(implicit log: NotebookOutput): Double = paint(
-    contentUrl = contentUrl,
-    initFn = initFn,
-    canvas = canvas,
-    network = network,
-    optimizer = optimizer,
-    renderingFn = x => new PipelineNetwork(1),
-    resolutions = resolutions)
-
   def paint
   (
     contentUrl: String,
@@ -307,6 +290,23 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     }
     canvas.freeRef()
   }
+
+  def paint_single
+  (
+    contentUrl: String,
+    initFn: Tensor => Tensor,
+    canvas: RefAtomicReference[Tensor],
+    network: VisualNetwork,
+    optimizer: BasicOptimizer,
+    resolutions: Double*
+  )(implicit log: NotebookOutput): Double = paint(
+    contentUrl = contentUrl,
+    initFn = initFn,
+    canvas = canvas,
+    network = network,
+    optimizer = optimizer,
+    renderingFn = x => new PipelineNetwork(1),
+    resolutions = resolutions)
 
   def paint_single_view
   (
