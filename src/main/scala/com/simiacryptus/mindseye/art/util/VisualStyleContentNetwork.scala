@@ -96,8 +96,6 @@ case class VisualStyleContentNetwork
     trainable
   }
 
-  def prefilterContent = false
-
   def trainable_sharedStyle(canvas: Tensor, content: Tensor, loadedImages: Array[Tensor], styleModifier: VisualModifier, contentModifier: VisualModifier) = {
     val contentDims = content.getDimensions()
     val canvasDims = canvas.getDimensions
@@ -162,6 +160,8 @@ case class VisualStyleContentNetwork
     canvas.freeRef()
     sumTrainable
   }
+
+  def prefilterContent = false
 
   class TileTrainer
   (

@@ -86,7 +86,7 @@ Once an application is running, there are several other pages that can be reques
 1. /cuda/info.txt - This endpoint returns diagnostics text that is returned by the CuDNN library
 1. /shutdown - This endpoint immediately kills the JVM, and if running on EC2 also triggers instance termination.
 1. /threads.json - This endpoint returns information on all stack traces and various thread information from the JVM. Useful for internal code development.
-1. /cuda/stats.json - This endpoint returns profiling data collected during CuDNN invocations. Useful for internal code development.
+1. /cuda/stats.json - This endpoint returns profiling data collected during CuDNN layerTestParameters. Useful for internal code development.
 
 # Background
 This software is built on top of other software and technology.

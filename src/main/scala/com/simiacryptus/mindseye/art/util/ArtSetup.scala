@@ -100,10 +100,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     getPaintings(new URI("https://www.wikiart.org/en/search/" + URLEncoder.encode(searchWord, "UTF-8").replaceAllLiterally("+", "%20") + "/1?json=2"), minWidth, 100)
   }
 
-  def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
-    getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
-  }
-
   def getPaintings(uri: URI, minWidth: Int, maxResults: Int): Array[String] = {
     new GsonBuilder().create().fromJson(IOUtils.toString(
       uri,
@@ -129,6 +125,10 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
             ""
         }
       }).filterNot(_.isEmpty).toArray
+  }
+
+  def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
+    getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
   }
 
   def binaryFill(seq: List[Int]): List[Int] = {
@@ -177,7 +177,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
           val (name, network) = networks(i)
           log.h2(name.toString)
           val canvas = canvases(i)
-          CudaSettings.INSTANCE().defaultPrecision = network.precision
+          CudaSettings.INSTANCE().setDefaultPrecision(network.precision)
           val content = ImageArtUtil.loadImage(log, contentUrl, res.toInt)
           if (null == canvas.get) {
             implicit val nullNotebookOutput = new NullNotebookOutput()
@@ -241,7 +241,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     aspect: Option[Double] = None
   )(implicit log: NotebookOutput): Double = {
     def prep(res: Double) = {
-      CudaSettings.INSTANCE().defaultPrecision = network.precision
+      CudaSettings.INSTANCE().setDefaultPrecision(network.precision)
       var content = if (aspect.isDefined) {
         ImageArtUtil.loadImage(log, contentUrl, res.toInt, (aspect.get * res).toInt)
       } else {
@@ -328,7 +328,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
 
   def texture(aspectRatio: Double, initUrl: String, canvas: RefAtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Seq[Double])(implicit log: NotebookOutput): Double = {
     def prep(width: Double) = {
-      CudaSettings.INSTANCE().defaultPrecision = network.precision
+      CudaSettings.INSTANCE().setDefaultPrecision(network.precision)
       val height = width * aspectRatio
       var content = ImageArtUtil.loadImage(log, initUrl, width.toInt, height.toInt)
       val contentTensor = if (null == content) {

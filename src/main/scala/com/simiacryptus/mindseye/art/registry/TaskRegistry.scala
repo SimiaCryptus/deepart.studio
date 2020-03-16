@@ -36,7 +36,7 @@ trait TaskRegistry {
     val archiveHome = log.getArchiveHome
     if (!s3bucket.isEmpty && null != archiveHome) Option(new GifRegistration(
       bucket = s3bucket.split("/").head,
-      reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getId() + ".html",
+      reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getFileName() + ".html",
       liveUrl = s"http://${EC2Util.publicHostname()}:1080/",
       canvas = () => {
         val list = canvas.filter(_ != null)
@@ -57,7 +57,7 @@ trait TaskRegistry {
     val archiveHome = log.getArchiveHome
     if (!s3bucket.isEmpty && null != archiveHome) Option(new GifRegistration(
       bucket = s3bucket.split("/").head,
-      reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getId() + ".html",
+      reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getFileName() + ".html",
       liveUrl = s"http://${EC2Util.publicHostname()}:1080/",
       canvas = () => {
         val list = canvas.filter(_ != null).map(tensor => {
@@ -76,19 +76,11 @@ trait TaskRegistry {
     ).start()(s3client, ec2client)) else None
   }
 
-  def indexStr: String = className
-
-  def className: String = getClass.getSimpleName.stripSuffix("$")
-
-  def indexFile: String = "index.html"
-
-  def description: String = ""
-
   def registerWithIndexJPG(canvas: () => Tensor)(implicit log: NotebookOutput): Option[JobRegistration[Tensor]] = {
     val archiveHome = log.getArchiveHome
     if (!s3bucket.isEmpty && null != archiveHome) Option(new JpgRegistration(
       bucket = s3bucket.split("/").head,
-      reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getId() + ".html",
+      reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getFileName() + ".html",
       liveUrl = s"http://${EC2Util.publicHostname()}:1080/",
       canvas = canvas,
       indexFile = indexFile,
@@ -97,5 +89,13 @@ trait TaskRegistry {
       description = description
     ).start()(s3client, ec2client)) else None
   }
+
+  def indexStr: String = className
+
+  def className: String = getClass.getSimpleName.stripSuffix("$")
+
+  def indexFile: String = "index.html"
+
+  def description: String = ""
 
 }
