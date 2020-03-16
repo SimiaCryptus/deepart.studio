@@ -41,7 +41,7 @@ import com.simiacryptus.notebook.{MarkdownNotebookOutput, NotebookOutput, NullNo
 import com.simiacryptus.ref.wrappers.RefAtomicReference
 import com.simiacryptus.sparkbook.util.Java8Util._
 import com.simiacryptus.sparkbook.{InteractiveSetup, NotebookRunner, RepeatedInteractiveSetup}
-import com.simiacryptus.util.FastRandom
+import com.simiacryptus.util.{FastRandom, S3Uploader}
 import org.apache.commons.io.{FileUtils, IOUtils}
 
 import scala.collection.JavaConversions._
@@ -73,9 +73,9 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       val localName = localHome.getName
       val archiveName = archiveHome.getPath.stripSuffix("/").split('/').last
       if (localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
-        if (s3bucket != null) S3Util.upload(s3client, archiveHome.resolve(".."), localHome)
+        if (s3bucket != null) S3Uploader.upload(s3client, archiveHome.resolve(".."), localHome)
       } else {
-        if (s3bucket != null) S3Util.upload(s3client, archiveHome, localHome)
+        if (s3bucket != null) S3Uploader.upload(s3client, archiveHome, localHome)
       }
     }
   }
@@ -88,9 +88,9 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
         val localName = localHome.getName
         val archiveName = archiveHome.getPath.stripSuffix("/").split('/').last
         if (localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
-          S3Util.upload(s3client, archiveHome.resolve(".."), localHome)
+          S3Uploader.upload(s3client, archiveHome.resolve(".."), localHome)
         } else {
-          S3Util.upload(s3client, archiveHome, localHome)
+          S3Uploader.upload(s3client, archiveHome, localHome)
         }
       }
     }
