@@ -56,45 +56,11 @@ object ArtSetup {
 
 }
 
-import com.simiacryptus.mindseye.art.util.ArtSetup._
-
 trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
 
   override def description: String = super.description
 
   override def className: String = getClass.getSimpleName.stripSuffix("$")
-
-  def s3bucket: String
-
-  def upload(log: NotebookOutput)(implicit executionContext: ExecutionContext = ExecutionContext.global) = {
-    log.write()
-    if (!s3bucket.isEmpty) for (archiveHome <- Option(log.getArchiveHome).filter(!_.toString.isEmpty)) {
-      val localHome = log.getRoot
-      val localName = localHome.getName
-      val archiveName = archiveHome.getPath.stripSuffix("/").split('/').last
-      if (localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
-        if (s3bucket != null) S3Uploader.upload(s3client, archiveHome.resolve(".."), localHome)
-      } else {
-        if (s3bucket != null) S3Uploader.upload(s3client, archiveHome, localHome)
-      }
-    }
-  }
-
-  def uploadAsync(log: NotebookOutput)(implicit executionContext: ExecutionContext = ExecutionContext.global) = {
-    log.write()
-    for (archiveHome <- Option(log.getArchiveHome).filter(!_.toString.isEmpty)) {
-      Future {
-        val localHome = log.getRoot
-        val localName = localHome.getName
-        val archiveName = archiveHome.getPath.stripSuffix("/").split('/').last
-        if (localHome.isDirectory && localName.equalsIgnoreCase(archiveName)) {
-          S3Uploader.upload(s3client, archiveHome.resolve(".."), localHome)
-        } else {
-          S3Uploader.upload(s3client, archiveHome, localHome)
-        }
-      }
-    }
-  }
 
   def getPaintingsBySearch(searchWord: String, minWidth: Int): Array[String] = {
     getPaintings(new URI("https://www.wikiart.org/en/search/" + URLEncoder.encode(searchWord, "UTF-8").replaceAllLiterally("+", "%20") + "/1?json=2"), minWidth, 100)
