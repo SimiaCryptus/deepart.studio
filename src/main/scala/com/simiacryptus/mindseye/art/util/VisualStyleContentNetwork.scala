@@ -41,7 +41,7 @@ case class VisualStyleContentNetwork
   contentLayers: Seq[VisionPipelineLayer] = Seq.empty,
   contentModifiers: Seq[VisualModifier] = List(new ContentMatcher),
   styleUrl: Seq[String] = Seq.empty,
-  styleUrls: Option[String] = None,
+  styleUrls: Seq[String] = Seq.empty,
   precision: Precision = Precision.Float,
   viewLayer: Seq[Int] => Layer = _ => new PipelineNetwork(1),
   override val tileSize: Int = 1200,

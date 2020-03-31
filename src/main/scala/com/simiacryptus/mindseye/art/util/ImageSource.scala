@@ -24,15 +24,16 @@ import com.simiacryptus.mindseye.util.ImageUtil
 import com.simiacryptus.notebook.NotebookOutput
 
 import scala.util.Random
+import scala.collection.JavaConverters._
 
-class ImageSource(urls: Seq[String], urls2: Option[String] = None)(implicit val log: NotebookOutput) {
+class ImageSource(urls: Seq[String], urls2: Seq[String] = Seq.empty)(implicit val log: NotebookOutput) {
   def tileSize: Int = 400
 
   def tilePadding: Int = 16
 
   def loadImages(canvasPixels: Int): Array[Tensor] = {
-    val images = if (urls2.isDefined) {
-      Random.shuffle(ImageArtUtil.loadImages(log, urls2.get, -1).toList)
+    val images = if (!urls2.isEmpty) {
+      Random.shuffle(ImageArtUtil.loadImages(log, urls2.asJava, -1).toList)
     } else {
       Random.shuffle(urls.toList)
         .map(ImageArtUtil.loadImage(log, _, -1))

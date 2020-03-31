@@ -66,7 +66,7 @@ object ArtUtil {
         (for ((url, v) <- getValue.toList.filter(_._2)) yield {
           val filename = url.split('/').last.toLowerCase.stripSuffix(".png") + ".png"
           if (pngCache.getOrElseUpdate(url, Try {
-            log.pngFile(ImageArtUtil.loadImage(log, url, 256), new File(log.getResourceDir, filename))
+            log.pngFile(ImageArtUtil.loadImage(log, url, 256))
           }).isSuccess) {
             s"""<input type="checkbox" name="${ids(url)}" value="true"><img src="etc/$filename" alt="$url"><br/>"""
           } else {

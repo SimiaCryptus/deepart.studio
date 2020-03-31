@@ -40,6 +40,7 @@ import com.simiacryptus.sparkbook.util.Java8Util._
 import com.simiacryptus.sparkbook.util.Logging
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
 
 trait BasicOptimizer extends Logging {
 
@@ -166,6 +167,8 @@ trait BasicOptimizer extends Logging {
   }
 
   def onComplete()(implicit log: NotebookOutput): Unit = {
-    S3Util.upload(log)
+    Try {
+      S3Util.upload(log)
+    }
   }
 }

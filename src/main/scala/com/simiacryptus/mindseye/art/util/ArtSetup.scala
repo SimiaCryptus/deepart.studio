@@ -28,7 +28,7 @@ import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2ClientBuilder}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.google.gson.GsonBuilder
-import com.simiacryptus.aws.{EC2Util, S3Util}
+import com.simiacryptus.aws.EC2Util
 import com.simiacryptus.mindseye.art.registry.TaskRegistry
 import com.simiacryptus.mindseye.art.util.ArtUtil.{cyclicalAnimation, load}
 import com.simiacryptus.mindseye.eval.Trainable
@@ -41,12 +41,11 @@ import com.simiacryptus.notebook.{MarkdownNotebookOutput, NotebookOutput, NullNo
 import com.simiacryptus.ref.wrappers.RefAtomicReference
 import com.simiacryptus.sparkbook.util.Java8Util._
 import com.simiacryptus.sparkbook.{InteractiveSetup, NotebookRunner, RepeatedInteractiveSetup}
-import com.simiacryptus.util.{FastRandom, S3Uploader}
+import com.simiacryptus.util.FastRandom
 import org.apache.commons.io.{FileUtils, IOUtils}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
 
 object ArtSetup {
   @JsonIgnore
@@ -195,6 +194,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     aspect = aspect,
     resolutions = resolutions)
 
+
   def paint
   (
     contentUrl: String,
@@ -206,15 +206,39 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1),
     aspect: Option[Double] = None
   )(implicit log: NotebookOutput): Double = {
+    paint_aspectFn(
+      contentUrl,
+      initFn,
+      canvas,
+      network,
+      optimizer,
+      resolutions,
+      renderingFn,
+      heightFn = aspect.map(a => (w: Int) => (w * a).toInt)
+    )
+  }
+
+  def paint_aspectFn
+  (
+    contentUrl: String,
+    initFn: Tensor => Tensor,
+    canvas: RefAtomicReference[Tensor],
+    network: VisualNetwork,
+    optimizer: BasicOptimizer,
+    resolutions: Seq[Double],
+    renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1),
+    heightFn: Option[Int => Int]
+  )(implicit log: NotebookOutput): Double = {
+
     def prep(res: Double) = {
       CudaSettings.INSTANCE().setDefaultPrecision(network.precision)
-      var content = if (aspect.isDefined) {
-        ImageArtUtil.loadImage(log, contentUrl, res.toInt, (aspect.get * res).toInt)
+      var content = if (heightFn.isDefined) {
+        ImageArtUtil.loadImage(log, contentUrl, res.toInt, heightFn.get.apply(res.toInt))
       } else {
         ImageArtUtil.loadImage(log, contentUrl, res.toInt)
       }
       val contentTensor = if (null == content) {
-        val tensor = new Tensor(res.toInt, (aspect.getOrElse(1.0) * res).toInt, 3)
+        val tensor = new Tensor(res.toInt, heightFn.map(_.apply(res.toInt)).getOrElse(res.toInt), 3)
         val map = tensor.map((x: Double) => FastRandom.INSTANCE.random())
         tensor.freeRef()
         map
@@ -239,14 +263,14 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       require(null != canvas)
       val currentCanvas: Tensor = updateCanvas(canvas.get())
       canvas.set(currentCanvas.addRef())
-      val trainable = network.apply(currentCanvas.addRef(), contentTensor)
+      val trainable: Trainable = network.apply(currentCanvas.addRef(), contentTensor)
       ArtUtil.resetPrecision(trainable.addRef().asInstanceOf[Trainable], network.precision)
       (currentCanvas, trainable)
     }
 
     if (resolutions.size == 1) {
       val (currentCanvas: Tensor, trainable: Trainable) = prep(resolutions.head)
-      optimizer.optimize(optimizer.render(currentCanvas), trainable)
+      optimizer.optimize(currentCanvas, trainable)
     } else {
       (for (res <- resolutions.toArray) yield {
         log.h1("Resolution " + res)

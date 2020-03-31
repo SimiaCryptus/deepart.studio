@@ -154,7 +154,7 @@ case class VisualStyleNetwork
   styleLayers: Seq[VisionPipelineLayer] = Seq.empty,
   styleModifiers: Seq[VisualModifier] = Seq.empty,
   styleUrl: Seq[String] = Seq.empty,
-  styleUrls: Option[String] = None,
+  styleUrls: Seq[String] = Seq.empty,
   precision: Precision = Precision.Float,
   viewLayer: Seq[Int] => Layer = _ => new PipelineNetwork(1),
   override val tileSize: Int = 1400,
@@ -165,16 +165,17 @@ case class VisualStyleNetwork
   override val magnification: Double = 1.0
 )(implicit override val log: NotebookOutput) extends ImageSource(styleUrl, styleUrls) with VisualNetwork {
 
-  def apply(canvas: Tensor, content: Tensor = null): Trainable = {
+  def apply(canvas: Tensor, content: Tensor): Trainable = {
     content.freeRef()
     val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas.addRef()))
     try {
-      new SumTrainable(styleLayers.groupBy(_.getPipelineName).mapValues(pipelineLayers => {
-        SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(pipelineLayer =>
-          styleModifiers.reduce(_ combine _).build(pipelineLayer, null, null, RefUtil.addRef(loadedImages): _*)): _*)
-      }).values.map(styleNetwork => {
-        val dimensions = canvas.getDimensions()
-        new TiledTrainable(canvas.addRef(), viewLayer(dimensions), tileSize, tilePadding, precision) {
+      val contentDimensions = content.getDimensions
+      new SumTrainable(styleLayers.groupBy(_.getPipelineName).values.map(pipelineLayers => {
+        val layer = viewLayer(contentDimensions)
+        val styleNetwork = SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(pipelineLayer => {
+          styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, layer.asTensorFunction(), RefUtil.addRef(loadedImages): _*)
+        }): _*)
+        new TiledTrainable(canvas.addRef(), layer, tileSize, tilePadding, precision) {
           override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
             regionSelector.freeRef()
             val network = styleNetwork.addRef()
