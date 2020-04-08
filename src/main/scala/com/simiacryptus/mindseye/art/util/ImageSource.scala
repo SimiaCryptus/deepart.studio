@@ -23,8 +23,8 @@ import com.simiacryptus.mindseye.lang.Tensor
 import com.simiacryptus.mindseye.util.ImageUtil
 import com.simiacryptus.notebook.NotebookOutput
 
-import scala.util.Random
 import scala.collection.JavaConverters._
+import scala.util.Random
 
 class ImageSource(urls: Seq[String], urls2: Seq[String] = Seq.empty)(implicit val log: NotebookOutput) {
   def tileSize: Int = 400
