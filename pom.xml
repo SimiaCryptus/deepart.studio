@@ -30,7 +30,7 @@
 
     <artifactId>deepartist.org</artifactId>
     <description>DeepArt Studio powered by MindsEye</description>
-    <url>https://simiacryptus.github.io/${github.project}/</url>
+
 
     <dependencyManagement>
         <dependencies>
