@@ -96,8 +96,6 @@ case class VisualStyleContentNetwork
     trainable
   }
 
-  def prefilterContent = false
-
   def trainable_sharedStyle(canvas: Tensor, content: Tensor, loadedImages: Array[Tensor], styleModifier: VisualModifier, contentModifier: VisualModifier) = {
     val contentDims = content.getDimensions()
     val canvasDims = canvas.getDimensions
@@ -105,7 +103,7 @@ case class VisualStyleContentNetwork
       val layers: Seq[VisionPipelineLayer] = pipelineLayers.flatMap(x => Option(x._2).toList.flatten)
       if (layers.isEmpty) null
       else SumInputsLayer.combine(layers.map(styleLayer => {
-        val network = styleModifier.build(styleLayer.addRef(), null, null, RefUtil.addRef(loadedImages): _*)
+        val network = styleModifier.build(styleLayer.addRef(), contentDims, null, RefUtil.addRef(loadedImages): _*)
         val layer = new AssertDimensionsLayer(1)
         layer.setName(s"$styleModifier - $styleLayer")
         network.add(layer).freeRef()
@@ -162,6 +160,8 @@ case class VisualStyleContentNetwork
     canvas.freeRef()
     sumTrainable
   }
+
+  def prefilterContent = false
 
   class TileTrainer
   (

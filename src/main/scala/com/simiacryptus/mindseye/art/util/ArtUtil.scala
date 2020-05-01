@@ -205,25 +205,6 @@ object ArtUtil {
     colorAdjustmentLayer
   }
 
-  def getTrainingMonitor[T](history: util.ArrayList[StepRecord] = new util.ArrayList[StepRecord], verbose: Boolean = true): TrainingMonitor = {
-    val trainingMonitor = new TrainingMonitor() {
-      override def clear(): Unit = {
-        super.clear()
-      }
-
-      override def log(msg: String): Unit = {
-        if (verbose) System.out.println(msg)
-        super.log(msg)
-      }
-
-      override def onStepComplete(currentPoint: Step): Unit = {
-        history.add(new StepRecord(currentPoint.point.getMean, currentPoint.time, currentPoint.iteration))
-        super.onStepComplete(currentPoint)
-      }
-    }
-    trainingMonitor
-  }
-
   def imageGrid(currentImage: BufferedImage, columns: Int = 2, rows: Int = 2) = Option(currentImage).map(tensor => {
     val assemblyLayer = new ImgTileAssemblyLayer(columns, rows)
     val result = assemblyLayer.eval(Stream.continually(Tensor.fromRGB(tensor)).take(columns * rows): _*)
@@ -244,7 +225,28 @@ object ArtUtil {
     }
   }
 
+  def getTrainingMonitor[T](history: util.ArrayList[StepRecord] = new util.ArrayList[StepRecord], verbose: Boolean = true): TrainingMonitor = {
+    val trainingMonitor = new TrainingMonitor() {
+      override def clear(): Unit = {
+        super.clear()
+      }
+
+      override def log(msg: String): Unit = {
+        if (verbose) System.out.println(msg)
+        super.log(msg)
+      }
+
+      override def onStepComplete(currentPoint: Step): Unit = {
+        history.add(new StepRecord(currentPoint.point.getMean, currentPoint.time, currentPoint.iteration))
+        super.onStepComplete(currentPoint)
+      }
+    }
+    trainingMonitor
+  }
+
   def findFiles(key: String, base: String): Array[String] = findFiles(Set(key), base)
+
+  def findFiles(key: String): Array[String] = findFiles(Set(key))
 
   def findFiles(key: Set[String], base: String = "s3a://data-cb03c/crawl/wikiart/", minSize: Int = 32 * 1024): Array[String] = {
     val itr = FileSystem.get(new URI(base), ImageArtUtil.getHadoopConfig()).listFiles(new Path(base), true)
@@ -256,7 +258,5 @@ object ArtUtil {
     }
     buffer.toArray
   }
-
-  def findFiles(key: String): Array[String] = findFiles(Set(key))
 
 }

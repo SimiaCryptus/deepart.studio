@@ -194,23 +194,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     aspect = aspect,
     resolutions = resolutions)
 
-  def paint_single
-  (
-    contentUrl: String,
-    initFn: Tensor => Tensor,
-    canvas: RefAtomicReference[Tensor],
-    network: VisualNetwork,
-    optimizer: BasicOptimizer,
-    resolutions: Double*
-  )(implicit log: NotebookOutput): Double = paint(
-    contentUrl = contentUrl,
-    initFn = initFn,
-    canvas = canvas,
-    network = network,
-    optimizer = optimizer,
-    renderingFn = x => new PipelineNetwork(1),
-    resolutions = resolutions)
-
   def paint
   (
     contentUrl: String,
@@ -296,6 +279,23 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     }
     canvas.freeRef()
   }
+
+  def paint_single
+  (
+    contentUrl: String,
+    initFn: Tensor => Tensor,
+    canvas: RefAtomicReference[Tensor],
+    network: VisualNetwork,
+    optimizer: BasicOptimizer,
+    resolutions: Double*
+  )(implicit log: NotebookOutput): Double = paint(
+    contentUrl = contentUrl,
+    initFn = initFn,
+    canvas = canvas,
+    network = network,
+    optimizer = optimizer,
+    renderingFn = x => new PipelineNetwork(1),
+    resolutions = resolutions)
 
   def paint_single_view
   (
