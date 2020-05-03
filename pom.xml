@@ -23,9 +23,8 @@
 
     <parent>
         <groupId>com.simiacryptus</groupId>
-        <artifactId>scala-parent</artifactId>
+        <artifactId>deepartist</artifactId>
         <version>MINDSEYE-SNAPSHOT</version>
-        <relativePath>../../mvn-parents/scala-parent</relativePath>
     </parent>
 
     <artifactId>deepartist.org</artifactId>
