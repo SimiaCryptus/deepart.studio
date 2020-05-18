@@ -28,11 +28,12 @@ import com.simiacryptus.mindseye.art.util.ArtUtil.{setPrecision, withTrainingMon
 import com.simiacryptus.mindseye.eval.Trainable
 import com.simiacryptus.mindseye.lang.cudnn.Precision
 import com.simiacryptus.mindseye.lang.{Layer, Tensor}
-import com.simiacryptus.mindseye.network.PipelineNetwork
+import com.simiacryptus.mindseye.network.{DAGNetwork, PipelineNetwork}
 import com.simiacryptus.mindseye.opt.line.{ArmijoWolfeSearch, LineSearchStrategy}
 import com.simiacryptus.mindseye.opt.orient.{LBFGS, TrustRegionStrategy}
 import com.simiacryptus.mindseye.opt.region.{RangeConstraint, TrustRegion}
-import com.simiacryptus.mindseye.opt.{IterativeTrainer, Step, TrainingMonitor}
+import com.simiacryptus.mindseye.opt.{LoggingIterativeTrainer, Step, TrainingMonitor}
+import com.simiacryptus.mindseye.test.MermaidGrapher
 import com.simiacryptus.notebook.NotebookOutput
 import com.simiacryptus.sparkbook.NotebookRunner
 import com.simiacryptus.sparkbook.NotebookRunner.withMonitoredJpg
@@ -82,46 +83,54 @@ trait BasicOptimizer extends Logging {
   def renderingNetwork(dims: Seq[Int]): PipelineNetwork = new PipelineNetwork(1)
 
   def optimize(currentImage: () => BufferedImage, trainable: Trainable)(implicit out: NotebookOutput): Double = {
+    trainable.getLayer match {
+      case dag: DAGNetwork => new MermaidGrapher(out, false).mermaid(dag);
+      case _ =>
+    }
     val timelineAnimation = new ArrayBuffer[BufferedImage]()
     timelineAnimation += currentImage()
     NotebookRunner.withMonitoredGif(() => timelineAnimation.toList ++ List(currentImage()), delay = 1000) {
       withTrainingMonitor(trainingMonitor => {
-        out.eval(() => {
-          val lineSearchInstance: LineSearchStrategy = lineSearchFactory
-          val trainer = new IterativeTrainer(trainable)
-          trainer.setOrientation(orientation())
-          trainer.setMonitor(new TrainingMonitor() {
-            override def clear(): Unit = trainingMonitor.clear()
-
-            override def log(msg: String): Unit = {
-              trainingMonitor.log(msg)
-              BasicOptimizer.this.log(msg)
+        val lineSearchInstance: LineSearchStrategy = lineSearchFactory
+        val trainer = new LoggingIterativeTrainer(trainable) {
+          override protected def logState(sublog: NotebookOutput, iteration: Int): Unit = {
+            if (true || 0 < logEvery && (0 == iteration % logEvery || iteration < logEvery)) {
+              val image = currentImage()
+              timelineAnimation += image
+              val caption = "Iteration " + iteration
+              out.p(out.jpg(image, caption))
             }
+          }
+        }
+        trainer.setOrientation(orientation())
+        trainer.setMonitor(new TrainingMonitor() {
+          override def clear(): Unit = trainingMonitor.clear()
 
-            override def onStepFail(currentPoint: Step): Boolean = {
-              BasicOptimizer.this.onStepFail(trainable.addRef().asInstanceOf[Trainable], currentPoint)
-            }
+          override def log(msg: String): Unit = {
+            trainingMonitor.log(msg)
+            BasicOptimizer.this.log(msg)
+          }
 
-            override def onStepComplete(currentPoint: Step): Unit = {
-              if (0 < logEvery && (0 == currentPoint.iteration % logEvery || currentPoint.iteration < logEvery)) {
-                val image = currentImage()
-                timelineAnimation += image
-                val caption = "Iteration " + currentPoint.iteration
-                out.p(caption + "\n" + out.jpg(image, caption))
-              }
-              BasicOptimizer.this.onStepComplete(trainable.addRef().asInstanceOf[Trainable], currentPoint)
-              trainingMonitor.onStepComplete(currentPoint)
-              super.onStepComplete(currentPoint)
-            }
-          })
-          trainer.setTimeout(trainingMinutes, TimeUnit.MINUTES)
-          trainer.setMaxIterations(trainingIterations)
-          trainer.setLineSearchFactory((_: CharSequence) => lineSearchInstance)
-          trainer.setTerminateThreshold(java.lang.Double.NEGATIVE_INFINITY)
-          val result = trainer.run.asInstanceOf[lang.Double]
-          trainer.freeRef()
-          result
+          override def onStepFail(currentPoint: Step): Boolean = {
+            BasicOptimizer.this.onStepFail(trainable.addRef().asInstanceOf[Trainable], currentPoint)
+          }
+
+          override def onStepComplete(currentPoint: Step): Unit = {
+            BasicOptimizer.this.onStepComplete(trainable.addRef().asInstanceOf[Trainable], currentPoint)
+            trainingMonitor.onStepComplete(currentPoint)
+            super.onStepComplete(currentPoint)
+          }
         })
+        trainer.setTimeout(trainingMinutes, TimeUnit.MINUTES)
+        trainer.setMaxIterations(trainingIterations)
+        trainer.setLineSearchFactory((_: CharSequence) => lineSearchInstance)
+        trainer.setTerminateThreshold(java.lang.Double.NEGATIVE_INFINITY)
+        val result = trainer.run(out).asInstanceOf[lang.Double]
+        //        val result = out.eval(() => {
+        //          trainer.run.asInstanceOf[lang.Double]
+        //        })
+        trainer.freeRef()
+        result
       })(out)
     }(out)
   }

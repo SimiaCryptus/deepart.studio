@@ -39,7 +39,7 @@ import com.simiacryptus.mindseye.opt.line.QuadraticSearch
 import com.simiacryptus.mindseye.opt.orient.TrustRegionStrategy
 import com.simiacryptus.mindseye.opt.region.{OrthonormalConstraint, TrustRegion}
 import com.simiacryptus.mindseye.opt.{IterativeTrainer, Step, TrainingMonitor}
-import com.simiacryptus.mindseye.test.{StepRecord, TestUtil}
+import com.simiacryptus.mindseye.test.{GraphVizNetworkInspector, StepRecord, TestUtil}
 import com.simiacryptus.mindseye.util.ImageUtil
 import com.simiacryptus.notebook._
 import com.simiacryptus.sparkbook.NotebookRunner
@@ -116,7 +116,7 @@ object ArtUtil {
     log.subreport(pipeline.name + "_Layers", (sublog: NotebookOutput) => {
       pipeline.getLayerList().foreach(layer => {
         sublog.h1(layer.name())
-        TestUtil.graph(sublog, layer.getLayer.asInstanceOf[PipelineNetwork])
+        GraphVizNetworkInspector.graph(sublog, layer.getLayer.asInstanceOf[PipelineNetwork])
       })
       null
     })

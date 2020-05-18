@@ -176,6 +176,11 @@ case class VisualStyleNetwork
           styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, layer.asTensorFunction(), RefUtil.addRef(loadedImages): _*)
         }): _*)
         new TiledTrainable(canvas.addRef(), layer, tileSize, tilePadding, precision) {
+
+          override def getLayer(): Layer = {
+            styleNetwork.addRef()
+          }
+
           override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
             regionSelector.freeRef()
             val network = styleNetwork.addRef()
