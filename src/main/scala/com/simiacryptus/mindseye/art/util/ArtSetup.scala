@@ -33,7 +33,7 @@ import com.simiacryptus.mindseye.art.registry.TaskRegistry
 import com.simiacryptus.mindseye.art.util.ArtUtil.{cyclicalAnimation, load}
 import com.simiacryptus.mindseye.eval.Trainable
 import com.simiacryptus.mindseye.lang.Tensor
-import com.simiacryptus.mindseye.lang.cudnn.CudaSettings
+import com.simiacryptus.mindseye.lang.cudnn.{CudaSettings, Precision}
 import com.simiacryptus.mindseye.network.PipelineNetwork
 import com.simiacryptus.mindseye.test.TestUtil
 import com.simiacryptus.mindseye.util.ImageUtil
@@ -212,7 +212,6 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       network,
       optimizer,
       resolutions,
-      renderingFn,
       heightFn = aspect.map(a => (w: Int) => (w * a).toInt)
     )
   }
@@ -225,12 +224,11 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
     network: VisualNetwork,
     optimizer: BasicOptimizer,
     resolutions: Seq[Double],
-    renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1),
     heightFn: Option[Int => Int]
   )(implicit log: NotebookOutput): Double = {
 
     def prep(res: Double) = {
-      CudaSettings.INSTANCE().setDefaultPrecision(network.precision)
+      CudaSettings.INSTANCE().setDefaultPrecision(Precision.Float)
       var content = if (heightFn.isDefined) {
         ImageArtUtil.loadImage(log, contentUrl, res.toInt, heightFn.get.apply(res.toInt))
       } else {
@@ -252,9 +250,13 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
         } else {
           val width = if (null == content) res.toInt else content.getWidth
           val height = if (null == content) res.toInt else content.getHeight
-          val image = currentCanvas.toRgbImage
-          currentCanvas.freeRef()
-          Tensor.fromRGB(ImageUtil.resize(image, width, height))
+          if(width == currentCanvas.getDimensions()(0) && height == currentCanvas.getDimensions()(1)) {
+            currentCanvas
+          } else {
+            val image = currentCanvas.toRgbImage
+            currentCanvas.freeRef()
+            Tensor.fromRGB(ImageUtil.resize(image, width, height))
+          }
         }
       }
 

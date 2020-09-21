@@ -44,7 +44,7 @@ case class VisualStyleContentNetwork
   styleUrls: Seq[String] = Seq.empty,
   precision: Precision = Precision.Float,
   viewLayer: Seq[Int] => Layer = _ => new PipelineNetwork(1),
-  override val tileSize: Int = 1200,
+  override val tileSize: Int = ArtSettings.INSTANCE().defaultTileSize,
   override val tilePadding: Int = 64,
   override val minWidth: Int = 1,
   override val maxWidth: Int = 2048,
