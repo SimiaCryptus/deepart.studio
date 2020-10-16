@@ -156,13 +156,13 @@ case class VisualStyleNetwork
   styleUrl: Seq[String] = Seq.empty,
   styleUrls: Seq[String] = Seq.empty,
   precision: Precision = Precision.Float,
-  viewLayer: Seq[Int] => Layer = _ => new PipelineNetwork(1),
+  viewLayer: Seq[Int] => List[Layer] = _ => List(new PipelineNetwork(1)),
   override val tileSize: Int = 1400,
   override val tilePadding: Int = 64,
   override val minWidth: Int = 1,
   override val maxWidth: Int = 10000,
   override val maxPixels: Double = 5e8,
-  override val magnification: Double = 1.0
+  override val magnification: Seq[Double] = Array(1.0)
 )(implicit override val log: NotebookOutput) extends ImageSource(styleUrl, styleUrls) with VisualNetwork {
 
   def apply(canvas: Tensor, content: Tensor): Trainable = {
@@ -170,8 +170,10 @@ case class VisualStyleNetwork
     val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas.addRef()))
     try {
       val contentDimensions = content.getDimensions
-      new SumTrainable(styleLayers.groupBy(_.getPipelineName).values.map(pipelineLayers => {
-        val layer = viewLayer(contentDimensions)
+      new SumTrainable((for(
+        pipelineLayers <- styleLayers.groupBy(_.getPipelineName).values;
+        layer <- viewLayer(contentDimensions)
+      ) yield {
         val styleNetwork = SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(pipelineLayer => {
           styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, layer.asTensorFunction(), RefUtil.addRef(loadedImages): _*)
         }): _*)
@@ -193,7 +195,7 @@ case class VisualStyleNetwork
             super._free()
           }
         }
-      }).toArray: _*)
+      }).toArray:_*)
     } finally {
       RefUtil.freeRef(loadedImages)
       canvas.freeRef()

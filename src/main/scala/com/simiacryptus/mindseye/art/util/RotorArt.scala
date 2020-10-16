@@ -19,13 +19,16 @@
 
 package com.simiacryptus.mindseye.art.util
 
-import com.simiacryptus.mindseye.layers.java.{BoundedActivationLayer, ImgViewLayer, LinearActivationLayer, SumInputsLayer}
+import com.simiacryptus.mindseye.lang.Layer
+import com.simiacryptus.mindseye.layers.java.{BoundedActivationLayer, AffineImgViewLayer, LinearActivationLayer, SumInputsLayer}
 import com.simiacryptus.mindseye.network.PipelineNetwork
 import com.simiacryptus.notebook.NotebookOutput
 
+import scala.collection.immutable
+
 abstract class RotorArt(
                          val rotationalSegments: Int = 3
-                       ) extends ArtSetup[Object] {
+                       ) extends ArtSetup[Object] with GeometricArt {
 
   val rotationalChannelPermutation: Array[Int] = Permutation.random(3, rotationalSegments)
 
@@ -57,36 +60,16 @@ abstract class RotorArt(
   def getKaleidoscope(canvasDims: Array[Int]) = {
     val permutation = Permutation(this.rotationalChannelPermutation: _*)
     require(permutation.unity == (permutation ^ rotationalSegments), s"$permutation ^ $rotationalSegments => ${(permutation ^ rotationalSegments)} != ${permutation.unity}")
-    val network = new PipelineNetwork(1)
-    network.add(new SumInputsLayer(), (0 until rotationalSegments)
-      .map(segment => {
-        if (0 == segment) network.getInput(0) else {
-          val layer = getRotor(segment * 2 * Math.PI / rotationalSegments, canvasDims)
-          layer.setChannelSelector((permutation ^ segment).indices)
-          network.add(
-            layer,
-            network.getInput(0)
-          )
-        }
-      }): _*).freeRef()
-    val layer = new LinearActivationLayer()
-    layer.setScale(1.0 / rotationalSegments)
-    layer.freeze()
-    network.add(layer).freeRef()
-    val boundedActivationLayer = new BoundedActivationLayer()
-    boundedActivationLayer.setMinValue(0)
-    boundedActivationLayer.setMaxValue(255)
-    boundedActivationLayer.freeze()
-    network.add(boundedActivationLayer).freeRef()
-    network
-  }
-
-  def getRotor(radians: Double, canvasDims: Array[Int]) = {
-    val layer = new ImgViewLayer(canvasDims(0), canvasDims(1), true)
-    layer.setRotationCenterX(canvasDims(0) / 2)
-    layer.setRotationCenterY(canvasDims(1) / 2)
-    layer.setRotationRadians(radians)
-    layer
+    List(avg((0 until rotationalSegments).toArray.map(segment => {
+      if (0 == segment) None else {
+        val layer = getRotor(segment * 2 * Math.PI / rotationalSegments, canvasDims)
+        layer.setChannelSelector((permutation ^ segment).indices)
+        Option(layer)
+      }
+    }))
+    )
   }
 
 }
+
+

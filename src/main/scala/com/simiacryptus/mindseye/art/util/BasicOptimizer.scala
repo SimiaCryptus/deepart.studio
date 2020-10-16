@@ -83,10 +83,10 @@ trait BasicOptimizer extends Logging {
   def renderingNetwork(dims: Seq[Int]): PipelineNetwork = new PipelineNetwork(1)
 
   def optimize(currentImage: () => BufferedImage, trainable: Trainable)(implicit out: NotebookOutput): Double = {
-    trainable.getLayer match {
-      case dag: DAGNetwork => new MermaidGrapher(out, false).mermaid(dag);
-      case _ =>
-    }
+//    trainable.getLayer match {
+//      case dag: DAGNetwork => new MermaidGrapher(out, false).mermaid(dag);
+//      case _ =>
+//    }
     val timelineAnimation = new ArrayBuffer[BufferedImage]()
     timelineAnimation += currentImage()
     NotebookRunner.withMonitoredGif(() => timelineAnimation.toList ++ List(currentImage()), delay = 1000) {

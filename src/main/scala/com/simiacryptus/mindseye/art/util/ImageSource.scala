@@ -26,6 +26,10 @@ import com.simiacryptus.notebook.NotebookOutput
 import scala.collection.JavaConverters._
 import scala.util.Random
 
+object ImageSource {
+
+}
+
 class ImageSource(urls: Seq[String], urls2: Seq[String] = Seq.empty)(implicit val log: NotebookOutput) {
   def tileSize: Int = 400
 
@@ -39,13 +43,15 @@ class ImageSource(urls: Seq[String], urls2: Seq[String] = Seq.empty)(implicit va
         .map(ImageArtUtil.loadImage(log, _, -1))
     }
     val styles = images
-      .map(styleImage => {
-        val stylePixels = styleImage.getWidth * styleImage.getHeight
-        var finalWidth = if (canvasPixels > 0) (styleImage.getWidth * Math.sqrt((canvasPixels.toDouble / stylePixels) * magnification)).toInt else -1
-        if (finalWidth < minWidth && finalWidth > 0) finalWidth = minWidth
-        if (finalWidth > Math.min(maxWidth, styleImage.getWidth)) finalWidth = Math.min(maxWidth, styleImage.getWidth)
-        val resized = ImageUtil.resize(styleImage, finalWidth, true)
-        Tensor.fromRGB(resized)
+      .flatMap(styleImage => {
+        magnification.map(magnification=>{
+          val stylePixels = styleImage.getWidth * styleImage.getHeight
+          var finalWidth = if (canvasPixels > 0) (styleImage.getWidth * Math.sqrt((canvasPixels.toDouble / stylePixels) * magnification)).toInt else -1
+          if (finalWidth < minWidth && finalWidth > 0) finalWidth = minWidth
+          if (finalWidth > Math.min(maxWidth, styleImage.getWidth)) finalWidth = Math.min(maxWidth, styleImage.getWidth)
+          val resized = ImageUtil.resize(styleImage, finalWidth, true)
+          Tensor.fromRGB(resized)
+        })
       }).toBuffer
     require(!styles.isEmpty)
     while (styles.map(_.getDimensions).map(d => d(0) * d(1)).sum > maxPixels) styles.remove(0)
@@ -55,10 +61,10 @@ class ImageSource(urls: Seq[String], urls2: Seq[String] = Seq.empty)(implicit va
 
   def minWidth: Int = 1
 
-  def maxWidth: Int = 2048
+  def maxWidth: Int = 10000
 
   def maxPixels: Double = 5e7
 
-  def magnification: Double = 1.0
+  def magnification: Seq[Double] = Array(1.0)
 
 }
