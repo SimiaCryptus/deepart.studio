@@ -1,6 +1,6 @@
 package com.simiacryptus.mindseye.art.util
 
-import com.simiacryptus.math.PoincareDisk
+import com.simiacryptus.math.{PoincareDisk, Polygon, Raster}
 import com.simiacryptus.mindseye.lang.Layer
 import com.simiacryptus.mindseye.layers.java.ImgIndexMapViewLayer
 
@@ -15,8 +15,8 @@ case class HyperbolicTileView(p:Int, q:Int, i:Int) extends SymmetryTransform {
     HyperbolicTileView.cache.get((canvasDims.toList, (p,q,i))).getOrElse({
       HyperbolicTileView.cache.synchronized {
         HyperbolicTileView.cache.getOrElseUpdate((canvasDims.toList, (p,q,i)), {
-          val raster = new PoincareDisk.Raster(canvasDims(0), canvasDims(1))
-          new ImgIndexMapViewLayer(raster, raster.pixelMap(PoincareDisk.regularPolygon(p, q), i).getPixelMap)
+          val raster = new Raster(canvasDims(0), canvasDims(1))
+          new ImgIndexMapViewLayer(raster, raster.pixelMap(Polygon.regularPolygon(p, q), i).getPixelMap)
         })
       }
     }).addRef().asInstanceOf[Layer]

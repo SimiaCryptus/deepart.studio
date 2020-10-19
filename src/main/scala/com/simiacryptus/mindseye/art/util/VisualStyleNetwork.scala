@@ -166,16 +166,23 @@ case class VisualStyleNetwork
 )(implicit override val log: NotebookOutput) extends ImageSource(styleUrl, styleUrls) with VisualNetwork {
 
   def apply(canvas: Tensor, content: Tensor): Trainable = {
+    val dimensions = content.getDimensions
     content.freeRef()
-    val loadedImages = loadImages(VisualStyleNetwork.pixels(canvas.addRef()))
+    apply(canvas, dimensions)
+  }
+
+  def apply(canvas: Tensor, dimensions: Array[Int]) = {
+    val loadedImages = loadImages(dimensions.reduce(_*_))
     try {
-      val contentDimensions = content.getDimensions
-      new SumTrainable((for(
+      val contentDimensions = dimensions
+      new SumTrainable((for (
         pipelineLayers <- styleLayers.groupBy(_.getPipelineName).values;
         layer <- viewLayer(contentDimensions)
       ) yield {
         val styleNetwork = SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(pipelineLayer => {
-          styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, layer.asTensorFunction(), RefUtil.addRef(loadedImages): _*)
+          val network = styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, layer.asTensorFunction(), RefUtil.addRef(loadedImages): _*)
+          network.freeze()
+          network
         }): _*)
         new TiledTrainable(canvas.addRef(), layer, tileSize, tilePadding, precision) {
 
@@ -195,7 +202,7 @@ case class VisualStyleNetwork
             super._free()
           }
         }
-      }).toArray:_*)
+      }).toArray: _*)
     } finally {
       RefUtil.freeRef(loadedImages)
       canvas.freeRef()
