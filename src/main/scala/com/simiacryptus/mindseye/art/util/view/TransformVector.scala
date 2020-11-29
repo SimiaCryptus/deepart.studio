@@ -1,9 +1,8 @@
-package com.simiacryptus.mindseye.art.util
+package com.simiacryptus.mindseye.art.util.view
 
+import com.simiacryptus.mindseye.art.util.{Permutation, ViewMask}
 import com.simiacryptus.mindseye.lang.Layer
 import com.simiacryptus.mindseye.layers.java.AffineImgViewLayer
-
-
 
 case class TransformVector
 (
@@ -11,7 +10,7 @@ case class TransformVector
   rotation: Double = 0.0,
   symmetry: Boolean = true,
   mask: ViewMask = ViewMask()
-) extends SymmetryTransform {
+) extends ImageView {
 
   def *(right: TransformVector) = TransformVector(
     offset = cross(offset, right.offset).map(x => x._1._1.zip(x._2._1).map(t => t._1 + t._2) -> x._1._2 * x._2._2).toArray.toMap,

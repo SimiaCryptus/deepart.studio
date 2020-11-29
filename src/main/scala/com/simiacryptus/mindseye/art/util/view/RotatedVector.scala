@@ -1,5 +1,6 @@
-package com.simiacryptus.mindseye.art.util
+package com.simiacryptus.mindseye.art.util.view
 
+import com.simiacryptus.mindseye.art.util.{Permutation, ViewMask}
 import com.simiacryptus.mindseye.lang.Layer
 import com.simiacryptus.mindseye.layers.java.AffineImgViewLayer
 
@@ -8,7 +9,7 @@ case class RotatedVector
   rotation: Map[Double, Permutation] = Map.empty,
   symmetry: Boolean = true,
   mask: ViewMask = ViewMask()
-) extends SymmetryTransform {
+) extends ImageView {
 
   def getSymmetricView(canvasDims: Array[Int]): Layer = {
     def maybeLayers = for ((rotation, permutation) <- rotation.toArray) yield {
