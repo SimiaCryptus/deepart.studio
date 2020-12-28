@@ -11,7 +11,7 @@ case class RotatedVector
   mask: ViewMask = ViewMask()
 ) extends ImageView {
 
-  def getSymmetricView(canvasDims: Array[Int]): Layer = {
+  def getView(canvasDims: Array[Int]): Layer = {
     def maybeLayers = for ((rotation, permutation) <- rotation.toArray) yield {
       val layer = new AffineImgViewLayer(canvasDims(0), canvasDims(1), true)
       layer.setChannelSelector(permutation.indices)

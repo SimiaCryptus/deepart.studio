@@ -47,7 +47,8 @@ import com.simiacryptus.sparkbook.util.Java8Util._
 import com.simiacryptus.util.Util
 import org.apache.hadoop.fs.{FileSystem, Path}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+//import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
@@ -114,7 +115,7 @@ object ArtUtil {
 
   def pipelineGraphs(pipeline: VisionPipeline)(implicit log: NotebookOutput) = {
     log.subreport(pipeline.name + "_Layers", (sublog: NotebookOutput) => {
-      pipeline.getLayerList().foreach(layer => {
+      pipeline.getLayerList().asScala.foreach(layer => {
         sublog.h1(layer.name())
         GraphVizNetworkInspector.graph(sublog, layer.getLayer.asInstanceOf[PipelineNetwork])
       })

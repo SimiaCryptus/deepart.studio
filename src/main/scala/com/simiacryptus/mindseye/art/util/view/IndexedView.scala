@@ -12,7 +12,7 @@ object IndexedView {
 abstract class IndexedView extends ImageView {
   def filterCircle = true
 
-  def getSymmetricView(canvasDims: Array[Int]): Layer = {
+  def getView(canvasDims: Array[Int]): Layer = {
     IndexedView.cache.get((canvasDims.toList, IndexedView.this)).getOrElse({
       IndexedView.cache.synchronized {
         IndexedView.cache.getOrElseUpdate((canvasDims.toList, IndexedView.this), {

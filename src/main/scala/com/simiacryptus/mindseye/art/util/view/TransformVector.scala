@@ -20,7 +20,7 @@ case class TransformVector
   def ^(n: Int): TransformVector = if (n <= 1) this else this * (this ^ (n - 1))
 
 
-  def getSymmetricView(canvasDims: Array[Int]): Layer = {
+  def getView(canvasDims: Array[Int]): Layer = {
     def singleView(offset: Array[Double], permutation: Permutation) = {
       val layer = new AffineImgViewLayer(canvasDims(0), canvasDims(1), true)
       layer.setOffsetX((offset(0) * canvasDims(0)).toInt)

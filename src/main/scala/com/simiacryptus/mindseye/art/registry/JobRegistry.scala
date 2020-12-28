@@ -26,17 +26,17 @@ import com.amazonaws.services.s3.model.ListObjectsRequest
 import com.simiacryptus.sparkbook.util.ScalaJson
 import org.apache.commons.io.IOUtils
 
-import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
+//import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 object JobRegistry {
 
   def list(bucket: String)(implicit s3client: AmazonS3): Seq[JobRegistry] = {
     val objectListing = s3client.listObjects(new ListObjectsRequest().withBucketName(bucket).withPrefix("jobs/"))
-    for (item <- objectListing.getObjectSummaries) yield {
+    (for (item <- objectListing.getObjectSummaries.asScala) yield {
       ScalaJson.fromJson(IOUtils.toString(s3client.getObject(bucket, item.getKey).getObjectContent, "UTF-8"), classOf[JobRegistry])
-    }
+    }).toList
   }
 
 }

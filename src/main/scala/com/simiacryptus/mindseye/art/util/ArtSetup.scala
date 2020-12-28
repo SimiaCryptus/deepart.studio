@@ -39,12 +39,12 @@ import com.simiacryptus.mindseye.test.TestUtil
 import com.simiacryptus.mindseye.util.ImageUtil
 import com.simiacryptus.notebook.{MarkdownNotebookOutput, NotebookOutput, NullNotebookOutput}
 import com.simiacryptus.ref.wrappers.RefAtomicReference
-import com.simiacryptus.sparkbook.util.Java8Util._
 import com.simiacryptus.sparkbook.{InteractiveSetup, NotebookRunner, RepeatedInteractiveSetup}
 import com.simiacryptus.util.FastRandom
 import org.apache.commons.io.{FileUtils, IOUtils}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+//import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 
 object ArtSetup {
@@ -74,7 +74,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
       uri,
       "UTF-8"
     ), classOf[util.ArrayList[util.Map[String, AnyRef]]])
-      .filter(_ ("width").asInstanceOf[Number].doubleValue() > minWidth)
+      .asScala.map(_.asScala).filter(_("width").asInstanceOf[Number].doubleValue() > minWidth)
       .map(_ ("image").toString.stripSuffix("!Large.jpg"))
       .take(maxResults)
       .map(file => {
@@ -136,7 +136,7 @@ trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
             tensorList.freeRef()
             data
           }
-        }))
+        }).toList)
       }, delay = delay) {
         for (i <- binaryFill((0 until networks.size).toList)) {
           val (name, network) = networks(i)

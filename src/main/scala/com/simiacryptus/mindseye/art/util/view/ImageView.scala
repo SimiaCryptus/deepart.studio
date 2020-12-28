@@ -4,7 +4,7 @@ import com.simiacryptus.mindseye.art.util.GeometricArt
 import com.simiacryptus.mindseye.lang.Layer
 
 trait ImageView extends GeometricArt {
-  def getSymmetricView(canvasDims: Array[Int]): Layer
+  def getView(canvasDims: Array[Int]): Layer
 
   protected def cross[X, Y](xs: Traversable[X], ys: Traversable[Y]) = for {x <- xs; y <- ys} yield (x, y)
 }
