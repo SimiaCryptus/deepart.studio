@@ -98,7 +98,7 @@ trait BasicOptimizer extends Logging {
               val image = currentImage()
               timelineAnimation += image
               val caption = "Iteration " + iteration
-              out.p(out.jpg(image, caption))
+              sublog.p(sublog.jpg(image, caption))
             }
           }
         }
@@ -108,7 +108,6 @@ trait BasicOptimizer extends Logging {
 
           override def log(msg: String): Unit = {
             trainingMonitor.log(msg)
-            BasicOptimizer.this.log(msg)
           }
 
           override def onStepFail(currentPoint: Step): Boolean = {
@@ -116,9 +115,8 @@ trait BasicOptimizer extends Logging {
           }
 
           override def onStepComplete(currentPoint: Step): Unit = {
-            BasicOptimizer.this.onStepComplete(trainable.addRef().asInstanceOf[Trainable], currentPoint)
+            BasicOptimizer.this.onStepComplete(trainable.addRef().asInstanceOf[Trainable], currentPoint.addRef())
             trainingMonitor.onStepComplete(currentPoint)
-            super.onStepComplete(currentPoint)
           }
         })
         trainer.setTimeout(trainingMinutes, TimeUnit.MINUTES)
@@ -126,16 +124,11 @@ trait BasicOptimizer extends Logging {
         trainer.setLineSearchFactory((_: CharSequence) => lineSearchInstance)
         trainer.setTerminateThreshold(java.lang.Double.NEGATIVE_INFINITY)
         val result = trainer.run(out).asInstanceOf[lang.Double]
-        //        val result = out.eval(() => {
-        //          trainer.run.asInstanceOf[lang.Double]
-        //        })
         trainer.freeRef()
         result
       })(out)
     }(out)
   }
-
-  def log(msg: String): Unit = {}
 
   def onStepComplete(trainable: Trainable, currentPoint: Step) = {
     currentPoint.freeRef()

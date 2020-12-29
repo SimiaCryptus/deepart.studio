@@ -174,7 +174,7 @@ object ArtUtil {
     layer
   }
 
-  def colorTransfer(contentImage: Tensor, styleImages: Seq[Tensor], tileSize: Int, tilePadding: Int, precision: Precision, colorAdjustmentLayer: PipelineNetwork): Layer = {
+  def colorTransfer(contentImage: Tensor, styleImages: Seq[Tensor], tileSize: Int, tilePadding: Int, precision: Precision, colorAdjustmentLayer: PipelineNetwork)(implicit log: NotebookOutput): Layer = {
     def styleMatcher = new GramMatrixMatcher() //.combine(new ChannelMeanMatcher().scale(1e0))
     val styleNetwork = MultiPrecision.setPrecision(styleMatcher.build(VisionPipelineLayer.NOOP, null, null, styleImages: _*), precision).asInstanceOf[PipelineNetwork]
     val trainable_color = new TiledTrainable(contentImage, colorAdjustmentLayer, tileSize, tilePadding, precision) {
@@ -184,7 +184,7 @@ object ArtUtil {
       }
     }.setMutableCanvas(false)
 
-    val trainingMonitor = getTrainingMonitor(verbose = false)
+    val trainingMonitor = getTrainingMonitor()(log)
     val search = new QuadraticSearch().setCurrentRate(1e0).setMaxRate(1e3).setRelativeTolerance(1e-2)
     val trainer = new IterativeTrainer(trainable_color)
     trainer.setOrientation(new TrustRegionStrategy() {
@@ -226,14 +226,14 @@ object ArtUtil {
     }
   }
 
-  def getTrainingMonitor[T](history: util.ArrayList[StepRecord] = new util.ArrayList[StepRecord], verbose: Boolean = true): TrainingMonitor = {
+  def getTrainingMonitor[T](history: util.ArrayList[StepRecord] = new util.ArrayList[StepRecord])(implicit out: NotebookOutput): TrainingMonitor = {
     val trainingMonitor = new TrainingMonitor() {
       override def clear(): Unit = {
         super.clear()
       }
 
       override def log(msg: String): Unit = {
-        if (verbose) System.out.println(msg)
+        out.p(msg)
         super.log(msg)
       }
 
