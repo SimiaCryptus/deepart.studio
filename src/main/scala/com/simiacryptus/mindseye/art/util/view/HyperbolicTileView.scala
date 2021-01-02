@@ -8,9 +8,9 @@ case class HyperbolicTileView(p: Int, q: Int, i: Int = 3, maxRadius: Double = 0.
     case _ => true
   }
 
+  val polygon = HyperbolicPolygon.regularPolygon(p, q)
+  val tiling = new HyperbolicTiling(polygon).expand(i)
   def mappingFunction(): Point => Point = {
-    val polygon = HyperbolicPolygon.regularPolygon(p, q)
-    val tiling = new HyperbolicTiling(polygon).expand(i)
     val transform = mode match {
       case "klien" => tiling.klien()(_)
       case "square" => tiling.square()(_)

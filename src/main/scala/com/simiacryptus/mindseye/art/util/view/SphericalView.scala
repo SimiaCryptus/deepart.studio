@@ -23,10 +23,10 @@ case class SphericalView(angle1: Double, angle2: Double) extends IndexedView {
         while (v < 0) v = v + 1
         u = u % 1
         v = v % 1
-        new Point(
-          2 * u - 1,
-          2 * v - 1
-        )
+        u = 2 * u - 1
+        v = 2 * v - 1
+        u = Math.asin(u) / (Math.PI / 2)
+        new Point(u, v)
       } catch {
         case e : Throwable => null
       }
