@@ -7,7 +7,7 @@ import com.simiacryptus.mindseye.layers.java.ImgIndexMapViewLayer
 import scala.collection.mutable
 
 object IndexedView {
-  private val cache = new mutable.HashMap[(List[Int], IndexedView), Layer]()
+  val cache = new mutable.HashMap[(List[Int], IndexedView), Layer]()
 }
 abstract class IndexedView extends ImageView {
   def filterCircle = true

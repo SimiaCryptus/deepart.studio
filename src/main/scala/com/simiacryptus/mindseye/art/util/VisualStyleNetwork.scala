@@ -157,6 +157,7 @@ case class VisualStyleNetwork
   styleUrls: Seq[String] = Seq.empty,
   precision: Precision = Precision.Float,
   viewLayer: Seq[Int] => List[Layer] = _ => List(new PipelineNetwork(1)),
+  filterStyleInput: Boolean = true,
   override val tileSize: Int = 1400,
   override val tilePadding: Int = 64,
   override val minWidth: Int = 1,
@@ -176,33 +177,40 @@ case class VisualStyleNetwork
     try {
       val contentDimensions = dimensions
       new SumTrainable((for (
-        pipelineLayers <- styleLayers.groupBy(_.getPipelineName).values;
-        layer <- viewLayer(contentDimensions)
+        pipelineLayers <- styleLayers.groupBy(_.getPipelineName).values
       ) yield {
-        val styleNetwork = SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(pipelineLayer => {
-          val network = styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, layer.asTensorFunction(), RefUtil.addRef(loadedImages): _*)
+        var styleNetwork: PipelineNetwork = null
+        if(!filterStyleInput) styleNetwork = SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(pipelineLayer => {
+          val network = styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, (x:Tensor)=>x, RefUtil.addRef(loadedImages): _*)
           network.freeze()
           network
         }): _*)
-        new TiledTrainable(canvas.addRef(), layer, tileSize, tilePadding, precision) {
-
-          override def getLayer(): Layer = {
-            styleNetwork.addRef()
-          }
-
-          override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
-            regionSelector.freeRef()
-            val network = styleNetwork.addRef()
-            MultiPrecision.setPrecision(network.addRef(), precision)
+        for(layer <- viewLayer(contentDimensions)) yield {
+          if(filterStyleInput) styleNetwork = SumInputsLayer.combine(pipelineLayers.filter(x => styleLayers.contains(x)).map(pipelineLayer => {
+            val network = styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, layer.asTensorFunction(), RefUtil.addRef(loadedImages): _*)
+            network.freeze()
             network
-          }
+          }): _*)
+          new TiledTrainable(canvas.addRef(), layer, tileSize, tilePadding, precision) {
 
-          override def _free(): Unit = {
-            styleNetwork.freeRef()
-            super._free()
+            override def getLayer(): Layer = {
+              styleNetwork.addRef()
+            }
+
+            override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
+              regionSelector.freeRef()
+              val network = styleNetwork.addRef()
+              MultiPrecision.setPrecision(network.addRef(), precision)
+              network
+            }
+
+            override def _free(): Unit = {
+              styleNetwork.freeRef()
+              super._free()
+            }
           }
         }
-      }).toArray: _*)
+      }).flatten.toArray: _*)
     } finally {
       RefUtil.freeRef(loadedImages)
       canvas.freeRef()
