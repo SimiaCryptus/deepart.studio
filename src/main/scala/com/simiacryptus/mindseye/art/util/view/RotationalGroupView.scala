@@ -190,18 +190,18 @@ class RotationalGroupView(x: Double, y: Double, mode: Int) extends SphericalView
     icosohedronMatrices.map(multiply(pt, _)).minBy(dot(primaryTile, _))
   }
 
-  def tileExpansion: ImageView = new ImageView {
-    override def getView(canvasDims: Array[Int]): Layer = {
-      IndexedView.cache.get((canvasDims.toList, RotationalGroupView.this)).getOrElse({
-        IndexedView.cache.synchronized {
-          IndexedView.cache.getOrElseUpdate((canvasDims.toList, RotationalGroupView.this), {
-            val raster: Raster = new Raster(canvasDims(0), canvasDims(1)).setFilterCircle(false)
-            new ImgIndexMapViewLayer(raster, raster.buildPixelMap(tileExpansionFunction()(_)))
-          })
-        }
-      }).addRef().asInstanceOf[Layer]
+  def tileExpansion: ImageView = (canvasDims: Array[Int]) => {
+    def layer = {
+      val raster: Raster = new Raster(canvasDims(0), canvasDims(1)).setFilterCircle(false )
+      new ImgIndexMapViewLayer(raster, raster.buildPixelMap(tileExpansionFunction()(_)))
     }
+    if(globalCache) IndexedView.cache.get((canvasDims.toList, RotationalGroupView.this)).getOrElse({
+      IndexedView.cache.synchronized {
+        IndexedView.cache.getOrElseUpdate((canvasDims.toList, RotationalGroupView.this), layer)
+      }
+    }).addRef().asInstanceOf[Layer] else layer
   }
+
   def tileExpansionFunction() = (point: Point) =>
     try {
       val angular1 = canvasToAngularCoords(point)
@@ -214,4 +214,19 @@ class RotationalGroupView(x: Double, y: Double, mode: Int) extends SphericalView
       case e: Throwable => null
     }
 
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[RotationalGroupView]
+
+  override def equals(other: Any): Boolean = other match {
+    case that: RotationalGroupView =>
+      (that canEqual this) &&
+        x == x &&
+        y == y &&
+        mode == mode
+    case _ => false
+  }
+
+  override def hashCode(): Int = {
+    val state = Seq(x, y, mode)
+    state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
+  }
 }

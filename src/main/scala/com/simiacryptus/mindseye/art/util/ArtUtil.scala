@@ -123,21 +123,21 @@ object ArtUtil {
     })
   }
 
-  def cyclicalAnimation(canvases: => Seq[Tensor]): Seq[BufferedImage] = {
+  def cyclicalAnimation(canvases: => List[Tensor]): List[BufferedImage] = {
     val list = canvases.filter(_ != null).map(tensor => {
       val image = tensor.toRgbImage
       tensor.freeRef()
       image
     })
     if (list.isEmpty) {
-      Seq.empty
+      List.empty
     } else {
       val maxWidth = list.map(_.getWidth).max
       cyclical(list.map(ImageUtil.resize(_, maxWidth, true)))
     }
   }
 
-  def cyclical[T](list: Seq[T]) = {
+  def cyclical[T](list: List[T]) = {
     (list ++ list.reverse.tail.dropRight(1))
   }
 

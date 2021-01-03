@@ -72,7 +72,7 @@ trait TaskRegistry {
           val image = tensor.toImage
           tensor.freeRef()
           image
-        })
+        }).toList
         val maxWidth = list.map(_.getWidth).max
         ArtUtil.cyclical(list.map(ImageUtil.resize(_, maxWidth, true)))
       },

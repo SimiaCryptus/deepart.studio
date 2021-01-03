@@ -11,14 +11,21 @@ object IndexedView {
 }
 abstract class IndexedView extends ImageView {
   def filterCircle = true
+  def globalCache = false
+  val cache = new mutable.HashMap[List[Int], Layer]()
 
   def getView(canvasDims: Array[Int]): Layer = {
-    IndexedView.cache.get((canvasDims.toList, IndexedView.this)).getOrElse({
+    def layer = {
+      val raster: Raster = new Raster(canvasDims(0), canvasDims(1)).setFilterCircle(filterCircle)
+      new ImgIndexMapViewLayer(raster, raster.buildPixelMap(mappingFunction()(_)))
+    }
+    if(globalCache) IndexedView.cache.get((canvasDims.toList, IndexedView.this)).getOrElse({
       IndexedView.cache.synchronized {
-        IndexedView.cache.getOrElseUpdate((canvasDims.toList, IndexedView.this), {
-          val raster: Raster = new Raster(canvasDims(0), canvasDims(1)).setFilterCircle(filterCircle)
-          new ImgIndexMapViewLayer(raster, raster.buildPixelMap(mappingFunction()(_)))
-        })
+        IndexedView.cache.getOrElseUpdate((canvasDims.toList, IndexedView.this), layer)
+      }
+    }).addRef().asInstanceOf[Layer] else this.cache.get(canvasDims.toList).getOrElse({
+      this.cache.synchronized {
+        this.cache.getOrElseUpdate(canvasDims.toList, layer)
       }
     }).addRef().asInstanceOf[Layer]
   }

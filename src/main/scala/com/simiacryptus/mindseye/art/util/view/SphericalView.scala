@@ -32,7 +32,7 @@ case class SphericalView(angle1: Double, angle2: Double) extends IndexedView {
     val y2 = y * Math.cos(-angle2) - z * Math.sin(-angle2)
     y = y2;
     z = z2;
-    val x1 = x * Math.cos(angle1) + y * Math.sin(-angle1)
+    val x1 = x * Math.cos(-angle1) + y * Math.sin(-angle1)
     val y1 = y * Math.cos(-angle1) - x * Math.sin(-angle1)
     x = x1;
     y = y1;
@@ -78,5 +78,20 @@ case class SphericalView(angle1: Double, angle2: Double) extends IndexedView {
     y = 2 * y - 1
     x = Math.asin(x) / (Math.PI / 2)
     new Point(x, y)
+  }
+
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[RotationalGroupView]
+
+  override def equals(other: Any): Boolean = other match {
+    case that: RotationalGroupView =>
+      (that canEqual this) &&
+        angle1 == angle1 &&
+        angle2 == angle2
+    case _ => false
+  }
+
+  override def hashCode(): Int = {
+    val state = Seq(angle1, angle2)
+    state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
 }
