@@ -7,6 +7,9 @@ import com.simiacryptus.math.{Point, Raster}
 import com.simiacryptus.mindseye.lang.Layer
 import com.simiacryptus.mindseye.layers.java.ImgIndexMapViewLayer
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
 object RotationalGroupView {
 
   def dist(a: Array[Double], b: Array[Double]): Double = {
@@ -51,7 +54,11 @@ class RotationalGroupView(x: Double, y: Double, mode: Int) extends SphericalView
   protected val vertexSeed = Array[Double](1, 0, 0)
 
   lazy val primaryTile: Array[Double] = {
-    unitV(icosohedronMatrices.map(multiply(vertexSeed, _)).sortBy(dot(_, tileProbe)).take(3).reduce((a, b) => sum(a, b)).map(_ / 3))
+    val vertices = icosohedronMatrices.map(multiply(vertexSeed, _)).toArray
+    val topUnique = new ArrayBuffer[Array[Double]]()
+    topUnique += vertices.minBy(dot(_, tileProbe))
+    while(topUnique.size < 3) topUnique += vertices.filter(v => topUnique.map(dist(v, _)).min > 1e-2).minBy(p => topUnique.map(dot(p, _)).sum)
+    unitV(topUnique.reduce((a, b) => sum(a, b)).map(_ / 3))
   }
 
   def textureView(): Point => Point = {
