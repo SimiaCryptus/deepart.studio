@@ -11,8 +11,6 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="hadoop-jgit-fs" />
-    <orderEntry type="module" module-name="java-analysis" />
     <orderEntry type="library" name="Maven: com.twitter:chill_2.12:0.9.5" level="project" />
     <orderEntry type="library" name="Maven: com.esotericsoftware:kryo-shaded:4.0.2" level="project" />
     <orderEntry type="library" name="Maven: org.apache.xbean:xbean-asm7-shaded:4.15" level="project" />
