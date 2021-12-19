@@ -213,6 +213,82 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     )
   }
 
+  def stylePrepFn
+  (
+    contentUrl: String,
+    network: VisualNetwork,
+    canvas: Tensor,
+    width: Double,
+    height: Option[Int] = None
+  )(implicit log: NotebookOutput): Trainable = {
+    CudaSettings.INSTANCE().setDefaultPrecision(Precision.Float)
+    val contentTensor = Tensor.fromRGB(if (height.isDefined) {
+      ImageArtUtil.loadImage(log, contentUrl, width.toInt, height.get)
+    } else {
+      ImageArtUtil.loadImage(log, contentUrl, width.toInt)
+    })
+    val trainable: Trainable = network.apply(canvas, contentTensor)
+    ArtUtil.resetPrecision(trainable.addRef(), network.precision)
+    trainable
+  }
+
+
+  def contentPrepFn
+  (
+    contentUrl: String,
+    initFn: Tensor => Tensor,
+    canvas: RefAtomicReference[Tensor],
+    network: VisualNetwork,
+    heightFn: Option[Int => Int] = None
+  )(implicit log: NotebookOutput): Double => (Tensor, Trainable) = {
+    (res: Double) => {
+      CudaSettings.INSTANCE().setDefaultPrecision(Precision.Float)
+      val content = if (heightFn.isDefined) {
+        ImageArtUtil.loadImage(log, contentUrl, res.toInt, heightFn.get.apply(res.toInt))
+      } else {
+        ImageArtUtil.loadImage(log, contentUrl, res.toInt)
+      }
+      val currentContent = Tensor.fromRGB(content)
+      val currentCanvas: Tensor = updateCanvas(canvas, initFn, currentContent.addRef())(content.getWidth, content.getHeight)
+      val trainable: Trainable = network.apply(currentCanvas.addRef(), currentContent)
+      ArtUtil.resetPrecision(trainable.addRef(), network.precision)
+      (currentCanvas, trainable)
+    }
+  }
+
+  private def updateCanvas(canvas: RefAtomicReference[Tensor], initFn: Tensor => Tensor, contentTensor: Tensor)(width: Int, height: Int) = {
+    require(null != canvas)
+    var currentCanvas: Tensor = canvas.get()
+    currentCanvas = if (null == currentCanvas) {
+      initFn(contentTensor)
+    } else {
+      contentTensor.freeRef()
+      val dims = currentCanvas.getDimensions()
+      if (width == dims(0) && height == dims(1)) {
+        currentCanvas
+      } else {
+        val image = currentCanvas.toRgbImage
+        currentCanvas.freeRef()
+        Tensor.fromRGB(ImageUtil.resize(image, width, height))
+      }
+    }
+    canvas.set(currentCanvas.addRef())
+    currentCanvas
+  }
+
+  def paint
+  (
+    optimizer: BasicOptimizer,
+    resolutions: Seq[Double],
+    prep: Double => (Tensor, Trainable)
+  )(implicit log: NotebookOutput): Double = {
+    (for (res <- resolutions.toArray) yield {
+      if(resolutions.size > 1) log.h1("Resolution " + res)
+      val (currentCanvas: Tensor, trainable: Trainable) = prep(res)
+      optimizer.optimize(currentCanvas, trainable)
+    }).last
+  }
+
   def paint_aspectFn
   (
     contentUrl: String,
@@ -223,59 +299,15 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     resolutions: Seq[Double],
     heightFn: Option[Int => Int]
   )(implicit log: NotebookOutput): Double = {
-
-    def prep(res: Double) = {
-      CudaSettings.INSTANCE().setDefaultPrecision(Precision.Float)
-      var content = if (heightFn.isDefined) {
-        ImageArtUtil.loadImage(log, contentUrl, res.toInt, heightFn.get.apply(res.toInt))
-      } else {
-        ImageArtUtil.loadImage(log, contentUrl, res.toInt)
-      }
-      val contentTensor = if (null == content) {
-        val tensor = new Tensor(res.toInt, heightFn.map(_.apply(res.toInt)).getOrElse(res.toInt), 3)
-        val map = tensor.map((x: Double) => FastRandom.INSTANCE.random())
-        tensor.freeRef()
-        map
-      } else {
-        Tensor.fromRGB(content)
-      }
-      if (null == content) content = contentTensor.toImage
-
-      def updateCanvas(currentCanvas: Tensor) = {
-        if (null == currentCanvas) {
-          initFn(contentTensor.addRef())
-        } else {
-          val width = if (null == content) res.toInt else content.getWidth
-          val height = if (null == content) res.toInt else content.getHeight
-          if(width == currentCanvas.getDimensions()(0) && height == currentCanvas.getDimensions()(1)) {
-            currentCanvas
-          } else {
-            val image = currentCanvas.toRgbImage
-            currentCanvas.freeRef()
-            Tensor.fromRGB(ImageUtil.resize(image, width, height))
-          }
-        }
-      }
-
-      require(null != canvas)
-      val currentCanvas: Tensor = updateCanvas(canvas.get())
-      canvas.set(currentCanvas.addRef())
-      val trainable: Trainable = network.apply(currentCanvas.addRef(), contentTensor)
-      ArtUtil.resetPrecision(trainable.addRef().asInstanceOf[Trainable], network.precision)
-      (currentCanvas, trainable)
-    }
-
-    if (resolutions.size == 1) {
-      val (currentCanvas: Tensor, trainable: Trainable) = prep(resolutions.head)
-      optimizer.optimize(currentCanvas, trainable)
-    } else {
-      (for (res <- resolutions.toArray) yield {
-        log.h1("Resolution " + res)
-        val (currentCanvas: Tensor, trainable: Trainable) = prep(res)
-        optimizer.optimize(currentCanvas, trainable)
-      }).last
-    }
-    canvas.freeRef()
+    paint(
+      optimizer = optimizer,
+      resolutions = resolutions,
+      prep = contentPrepFn(
+        contentUrl = contentUrl,
+        initFn = initFn,
+        canvas = canvas,
+        network = network,
+        heightFn = heightFn))
   }
 
   def paint_single
