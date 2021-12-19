@@ -202,10 +202,10 @@ case class VisualStyleContentNetwork
           contentLayers.filter(x => x.getPipelineName == name).map(contentLayer => {
             contentModifier.build(contentLayer.addRef(), contentDims, regionFn, contentRegion)
           }) ++ styleLayers.filter(x => x.getPipelineName == name).map(styleLayer => {
-            styleModifier.build(styleLayer.addRef(), contentDims, regionFn, loadedImages: _*)
+            styleModifier.build(styleLayer.addRef(), contentDims, regionFn, loadedImages.map(_.addRef()): _*)
           })
         }: _*)
-        MultiPrecision.setPrecision(network, precision)
+        MultiPrecision.setPrecision(network.addRef(), precision)
         network
       } finally {
         regionSelector.freeRef()

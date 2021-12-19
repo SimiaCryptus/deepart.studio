@@ -49,13 +49,10 @@ import scala.collection.mutable
 
 object ArtSetup {
   @JsonIgnore
-  @transient implicit val s3client: AmazonS3 = AmazonS3ClientBuilder.standard().withRegion(EC2Util.REGION).build()
-  @JsonIgnore
   @transient implicit val ec2client: AmazonEC2 = AmazonEC2ClientBuilder.standard().withRegion(EC2Util.REGION).build()
-
 }
 
-trait ArtSetup[T <: AnyRef] extends InteractiveSetup[T] with TaskRegistry {
+trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] with TaskRegistry {
 
   override def description: String = super.description
 

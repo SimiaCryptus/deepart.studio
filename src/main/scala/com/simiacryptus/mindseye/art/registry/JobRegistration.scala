@@ -101,6 +101,7 @@ abstract class JobRegistration[T]
 
   def rebuildIndex()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
     val jobs = JobRegistry.list(bucket).toArray.groupBy(_.className)
+    logger.info(s"Rebuilding index for $bucket (${jobs.values.flatten.size} jobs)")
 
     def toHtml(item: JobRegistry) = {
       if (item.isLive()(ec2client).toOption.getOrElse(false)) {
@@ -115,6 +116,7 @@ abstract class JobRegistration[T]
     }
     write(indexFile, (jobs.mapValues(_.sortBy(-_.lastReport).head).toList.sortBy(_._2.indexStr).map(item =>
       s"""<h1><a id="${item._1}"></a><a href="${item._1}.html">${item._1}</a></h1>${toHtml(item._2)}""")).mkString("\n"))
+    logger.info(s"Finished Rebuilding index for $bucket")
   }
 
   def write(indexFile: String, bodyHtml: String)(implicit s3client: AmazonS3) = {
@@ -157,6 +159,7 @@ abstract class JobRegistration[T]
       future.cancel(false)
       future = null
     }
+
   }
 
   def uploadImage(value: T)(implicit s3client: AmazonS3): String

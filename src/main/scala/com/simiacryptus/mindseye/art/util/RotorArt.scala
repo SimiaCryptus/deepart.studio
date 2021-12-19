@@ -19,16 +19,11 @@
 
 package com.simiacryptus.mindseye.art.util
 
-import com.simiacryptus.mindseye.lang.Layer
-import com.simiacryptus.mindseye.layers.java.{BoundedActivationLayer, AffineImgViewLayer, LinearActivationLayer, SumInputsLayer}
-import com.simiacryptus.mindseye.network.PipelineNetwork
 import com.simiacryptus.notebook.NotebookOutput
 
-import scala.collection.immutable
-
-abstract class RotorArt(
+abstract class RotorArt[U <: RotorArt[U]](
                          val rotationalSegments: Int = 3
-                       ) extends ArtSetup[Object] with GeometricArt {
+                       ) extends ArtSetup[Object,U] with GeometricArt {
 
   val rotationalChannelPermutation: Array[Int] = Permutation.random(3, rotationalSegments)
 

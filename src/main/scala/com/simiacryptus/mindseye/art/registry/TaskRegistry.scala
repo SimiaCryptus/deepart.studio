@@ -21,8 +21,10 @@ package com.simiacryptus.mindseye.art.registry
 
 import java.awt.image.BufferedImage
 
-import com.simiacryptus.aws.EC2Util
-import com.simiacryptus.mindseye.art.util.ArtSetup.{ec2client, s3client}
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.simiacryptus.aws.{EC2Util, S3Util}
+import com.simiacryptus.mindseye.art.util.ArtSetup.ec2client
 import com.simiacryptus.mindseye.art.util.ArtUtil
 import com.simiacryptus.mindseye.lang.Tensor
 import com.simiacryptus.mindseye.util.ImageUtil
@@ -33,6 +35,7 @@ trait TaskRegistry {
   def s3bucket: String
 
   def registerWithIndexGIF(canvas: => Seq[BufferedImage], delay: Int = 100)(implicit log: NotebookOutput) = {
+    implicit val s3client: AmazonS3 = S3Util.getS3(log.getArchiveHome)
     val archiveHome = log.getArchiveHome
     if (null != s3bucket && !s3bucket.isEmpty && null != archiveHome) Option(new GifRegistration(
       bucket = s3bucket.split("/").head,
@@ -63,6 +66,7 @@ trait TaskRegistry {
 
   def registerWithIndexGIF_Cyclic(canvas: => Seq[Tensor], delay: Int = 100)(implicit log: NotebookOutput) = {
     val archiveHome = log.getArchiveHome
+    implicit val s3client: AmazonS3 = S3Util.getS3(archiveHome)
     if (!s3bucket.isEmpty && null != archiveHome) Option(new GifRegistration(
       bucket = s3bucket.split("/").head,
       reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getFileName() + ".html",
@@ -86,6 +90,7 @@ trait TaskRegistry {
 
   def registerWithIndexJPG(canvas: () => Tensor)(implicit log: NotebookOutput): Option[JobRegistration[Tensor]] = {
     val archiveHome = log.getArchiveHome
+    implicit val s3client: AmazonS3 = S3Util.getS3(archiveHome)
     if (!s3bucket.isEmpty && null != archiveHome) Option(new JpgRegistration(
       bucket = s3bucket.split("/").head,
       reportUrl = "http://" + archiveHome.getHost + "/" + archiveHome.getPath.stripSuffix("/").stripPrefix("/") + "/" + log.getFileName() + ".html",
