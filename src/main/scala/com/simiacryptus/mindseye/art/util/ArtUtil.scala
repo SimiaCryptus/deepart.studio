@@ -148,7 +148,7 @@ object ArtUtil {
   }
 
   def load(contentDims: Array[Int], url: String)(implicit log: NotebookOutput = new NullNotebookOutput()): Tensor = {
-    ImageArtUtil.getImageTensor(url, log, contentDims(0), contentDims(1))
+    ImageArtUtil.getImageTensors(url, log, contentDims(0), contentDims(1)).head
   }
 
   def colorTransfer

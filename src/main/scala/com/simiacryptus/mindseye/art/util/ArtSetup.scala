@@ -32,7 +32,7 @@ import com.simiacryptus.aws.EC2Util
 import com.simiacryptus.mindseye.art.registry.TaskRegistry
 import com.simiacryptus.mindseye.art.util.ArtUtil.{cyclicalAnimation, load}
 import com.simiacryptus.mindseye.eval.Trainable
-import com.simiacryptus.mindseye.lang.Tensor
+import com.simiacryptus.mindseye.lang.{Result, Tensor}
 import com.simiacryptus.mindseye.lang.cudnn.{CudaSettings, Precision}
 import com.simiacryptus.mindseye.network.PipelineNetwork
 import com.simiacryptus.mindseye.test.TestUtil
@@ -111,7 +111,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     networks: mutable.Buffer[(Double, VisualNetwork)],
     optimizer: BasicOptimizer,
     resolutions: Seq[Double],
-    renderingFn: Seq[Int] => PipelineNetwork = null,
+    renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1),
     getParams: (mutable.Buffer[(Double, VisualNetwork)], Double) => VisualNetwork = (networks: mutable.Buffer[(Double, VisualNetwork)], x: Double) => {
       networks.head._2
     },
@@ -125,13 +125,11 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
             tensor
           } else {
             val renderer = renderingFn(tensor.getDimensions)
-            val result = renderer.eval(tensor)
-            renderer.freeRef()
-            val tensorList = result.getData
-            result.freeRef()
-            val data = tensorList.get(0)
-            tensorList.freeRef()
-            data
+            try {
+              Result.getData0(renderer.eval(tensor))
+            } finally {
+              renderer.freeRef()
+            }
           }
         }).toList)
       }, delay = delay) {
@@ -215,21 +213,33 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
 
   def stylePrepFn
   (
+    contentTensor: Tensor,
+    network: VisualNetwork,
+    canvas: Tensor
+  )(implicit log: NotebookOutput): Trainable = {
+    CudaSettings.INSTANCE().setDefaultPrecision(Precision.Float)
+    val trainable: Trainable = network.apply(canvas, contentTensor)
+    ArtUtil.resetPrecision(trainable.addRef(), network.precision)
+    trainable
+  }
+
+  def stylePrepFn
+  (
     contentUrl: String,
     network: VisualNetwork,
     canvas: Tensor,
     width: Double,
     height: Option[Int] = None
   )(implicit log: NotebookOutput): Trainable = {
-    CudaSettings.INSTANCE().setDefaultPrecision(Precision.Float)
-    val contentTensor = Tensor.fromRGB(if (height.isDefined) {
-      ImageArtUtil.loadImage(log, contentUrl, width.toInt, height.get)
-    } else {
-      ImageArtUtil.loadImage(log, contentUrl, width.toInt)
-    })
-    val trainable: Trainable = network.apply(canvas, contentTensor)
-    ArtUtil.resetPrecision(trainable.addRef(), network.precision)
-    trainable
+    stylePrepFn(
+      contentTensor = Tensor.fromRGB(if (height.isDefined) {
+        ImageArtUtil.loadImage(log, contentUrl, width.toInt, height.get)
+      } else {
+        ImageArtUtil.loadImage(log, contentUrl, width.toInt)
+      }),
+      network = network,
+      canvas = canvas
+    )
   }
 
 

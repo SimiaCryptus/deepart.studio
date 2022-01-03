@@ -30,18 +30,13 @@ object ImageSource {
 
 }
 
-class ImageSource(urls: Seq[String], urls2: Seq[String] = Seq.empty)(implicit val log: NotebookOutput) {
+class ImageSource(urls: Seq[String])(implicit val log: NotebookOutput) {
   def tileSize: Int = 400
 
   def tilePadding: Int = 16
 
   def loadImages(canvasPixels: Int): Array[Tensor] = {
-    val images = if (!urls2.isEmpty) {
-      Random.shuffle(ImageArtUtil.loadImages(log, urls2.asJava, -1).toList)
-    } else {
-      Random.shuffle(urls.toList)
-        .map(ImageArtUtil.loadImage(log, _, -1))
-    }
+    val images = Random.shuffle(ImageArtUtil.loadImages(log, urls.asJava, -1).toList)
     val styles = images
       .flatMap(styleImage => {
         magnification.map(magnification=>{

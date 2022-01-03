@@ -33,7 +33,7 @@ import com.simiacryptus.mindseye.opt.line.{ArmijoWolfeSearch, LineSearchStrategy
 import com.simiacryptus.mindseye.opt.orient.{LBFGS, TrustRegionStrategy}
 import com.simiacryptus.mindseye.opt.region.{RangeConstraint, TrustRegion}
 import com.simiacryptus.mindseye.opt.{LoggingIterativeTrainer, Step, TrainingMonitor}
-import com.simiacryptus.mindseye.test.MermaidGrapher
+import com.simiacryptus.mindseye.test.{GraphVizNetworkInspector, MermaidGrapher}
 import com.simiacryptus.notebook.NotebookOutput
 import com.simiacryptus.sparkbook.NotebookRunner
 import com.simiacryptus.sparkbook.NotebookRunner.withMonitoredJpg
@@ -56,7 +56,8 @@ trait BasicOptimizer extends Logging {
 
       withMonitoredJpg[Double](() => currentImage) {
         log.subreport("Optimization", (sub: NotebookOutput) => {
-          optimize(() => currentImage, trainable)(sub).asInstanceOf[java.lang.Double]
+          graph(trainable.addRef())(sub)
+          optimize(() => currentImage, trainable)(sub).asInstanceOf[lang.Double]
         })
       }
     } finally {
@@ -66,6 +67,21 @@ trait BasicOptimizer extends Logging {
       } catch {
         case e: Throwable => logger.warn("Error running onComplete", e)
       }
+    }
+  }
+
+  def graph(trainable: Trainable)(implicit log: NotebookOutput) = {
+    val layer = trainable.getLayer
+    try {
+      if (layer != null && layer.isInstanceOf[DAGNetwork]) {
+        log.subreport("Network Diagram", (sub: NotebookOutput) => {
+          GraphVizNetworkInspector.graph(sub, layer.asInstanceOf[DAGNetwork])
+          null
+        })
+      }
+    } finally {
+      trainable.freeRef()
+      layer.freeRef()
     }
   }
 

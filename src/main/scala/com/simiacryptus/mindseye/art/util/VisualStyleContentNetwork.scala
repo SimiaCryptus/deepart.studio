@@ -40,7 +40,6 @@ case class VisualStyleContentNetwork
   styleModifiers: Seq[VisualModifier] = Seq.empty,
   contentLayers: Seq[VisionPipelineLayer] = Seq.empty,
   contentModifiers: Seq[VisualModifier] = List(new ContentMatcher),
-  styleUrl: Seq[String] = Seq.empty,
   styleUrls: Seq[String] = Seq.empty,
   precision: Precision = Precision.Float,
   viewLayer: Seq[Int] => List[Layer] = _ => List(new PipelineNetwork(1)),
@@ -50,7 +49,7 @@ case class VisualStyleContentNetwork
   override val maxWidth: Int = 10000,
   override val maxPixels: Double = 5e7,
   override val magnification: Seq[Double] = Array(1.0)
-)(implicit override val log: NotebookOutput) extends ImageSource(styleUrl, styleUrls) with VisualNetwork {
+)(implicit override val log: NotebookOutput) extends ImageSource(styleUrls) with VisualNetwork {
 
   lazy val styleModifier = styleModifiers.reduceOption(_ combine _).getOrElse(new VisualModifier {
     override def build(visualModifierParameters: VisualModifierParameters): PipelineNetwork = {
