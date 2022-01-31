@@ -21,31 +21,36 @@ package com.simiacryptus.mindseye.art.util
 
 import java.awt.image.BufferedImage
 import java.lang
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import com.simiacryptus.aws.S3Util
 import com.simiacryptus.mindseye.art.util.ArtUtil.{setPrecision, withTrainingMonitor}
 import com.simiacryptus.mindseye.eval.Trainable
 import com.simiacryptus.mindseye.lang.cudnn.Precision
-import com.simiacryptus.mindseye.lang.{Layer, Tensor}
-import com.simiacryptus.mindseye.network.{DAGNetwork, PipelineNetwork}
+import com.simiacryptus.mindseye.lang.{Layer, Result, Tensor, TensorArray, TensorList}
+import com.simiacryptus.mindseye.layers.WrapperLayer
+import com.simiacryptus.mindseye.network.{CountingResult, DAGNetwork, PipelineNetwork}
 import com.simiacryptus.mindseye.opt.line.{ArmijoWolfeSearch, LineSearchStrategy}
 import com.simiacryptus.mindseye.opt.orient.{LBFGS, TrustRegionStrategy}
 import com.simiacryptus.mindseye.opt.region.{RangeConstraint, TrustRegion}
-import com.simiacryptus.mindseye.opt.{LoggingIterativeTrainer, Step, TrainingMonitor}
+import com.simiacryptus.mindseye.opt.{LoggingIterativeTrainer, Step, TrainingMonitor, TrainingResult}
 import com.simiacryptus.mindseye.test.{GraphVizNetworkInspector, MermaidGrapher}
 import com.simiacryptus.notebook.NotebookOutput
 import com.simiacryptus.sparkbook.NotebookRunner
 import com.simiacryptus.sparkbook.NotebookRunner.withMonitoredJpg
 import com.simiacryptus.sparkbook.util.Java8Util._
 import com.simiacryptus.sparkbook.util.Logging
+import com.simiacryptus.util.FastRandom
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
-trait BasicOptimizer extends Logging {
+trait ImageOptimizer extends Logging {
 
-  def optimize(canvasImage: Tensor, trainable: Trainable)(implicit log: NotebookOutput): Double = {
+  val maxRetries = 3
+
+  def optimize(canvasImage: Tensor, trainable: Trainable)(implicit log: NotebookOutput): TrainingResult = {
     try {
       def currentImage = {
         val tensor = render(canvasImage.addRef())
@@ -54,34 +59,36 @@ trait BasicOptimizer extends Logging {
         image
       }
 
-      withMonitoredJpg[Double](() => currentImage) {
+      var result = withMonitoredJpg[TrainingResult](() => currentImage) {
         log.subreport("Optimization", (sub: NotebookOutput) => {
-          graph(trainable.addRef())(sub)
-          optimize(() => currentImage, trainable)(sub).asInstanceOf[lang.Double]
+          NetworkUtil.graph(trainable.addRef())(sub)
+          optimize(() => currentImage, trainable.addRef())(sub)
         })
       }
+
+      lazy val data = canvasImage.getData
+      var noiseMagnitude = 1e-1
+      var retries = 0;
+      while(result.terminationCause == TrainingResult.TerminationCause.Failed && retries < maxRetries) {
+        retries = retries + 1
+        (0 until data.length).foreach(i=>data(i) = data(i) + FastRandom.INSTANCE.random() * noiseMagnitude)
+        noiseMagnitude = noiseMagnitude * 2
+        result = withMonitoredJpg[TrainingResult](() => currentImage) {
+          log.subreport("Optimization (Retry)", (sub: NotebookOutput) => {
+            optimize(() => currentImage, trainable.addRef())(sub)
+          })
+        }
+      }
+
+      result
     } finally {
+      trainable.freeRef()
       canvasImage.freeRef()
       try {
         onComplete()
       } catch {
         case e: Throwable => logger.warn("Error running onComplete", e)
       }
-    }
-  }
-
-  def graph(trainable: Trainable)(implicit log: NotebookOutput) = {
-    val layer = trainable.getLayer
-    try {
-      if (layer != null && layer.isInstanceOf[DAGNetwork]) {
-        log.subreport("Network Diagram", (sub: NotebookOutput) => {
-          GraphVizNetworkInspector.graph(sub, layer.asInstanceOf[DAGNetwork])
-          null
-        })
-      }
-    } finally {
-      trainable.freeRef()
-      layer.freeRef()
     }
   }
 
@@ -96,9 +103,9 @@ trait BasicOptimizer extends Logging {
     tensor
   }
 
-  def renderingNetwork(dims: Seq[Int]): PipelineNetwork = new PipelineNetwork(1)
+  def renderingNetwork(dims: Seq[Int]): Layer = new PipelineNetwork(1)
 
-  def optimize(currentImage: () => BufferedImage, trainable: Trainable)(implicit out: NotebookOutput): Double = {
+  def optimize(currentImage: () => BufferedImage, trainable: Trainable)(implicit out: NotebookOutput): TrainingResult = {
 //    trainable.getLayer match {
 //      case dag: DAGNetwork => new MermaidGrapher(out, false).mermaid(dag);
 //      case _ =>
@@ -127,11 +134,11 @@ trait BasicOptimizer extends Logging {
           }
 
           override def onStepFail(currentPoint: Step): Boolean = {
-            BasicOptimizer.this.onStepFail(trainable.addRef().asInstanceOf[Trainable], currentPoint)
+            ImageOptimizer.this.onStepFail(trainable.addRef().asInstanceOf[Trainable], currentPoint)
           }
 
           override def onStepComplete(currentPoint: Step): Unit = {
-            BasicOptimizer.this.onStepComplete(trainable.addRef().asInstanceOf[Trainable], currentPoint.addRef())
+            ImageOptimizer.this.onStepComplete(trainable.addRef().asInstanceOf[Trainable], currentPoint.addRef())
             trainingMonitor.onStepComplete(currentPoint)
           }
         })
@@ -139,9 +146,11 @@ trait BasicOptimizer extends Logging {
         trainer.setMaxIterations(trainingIterations)
         trainer.setLineSearchFactory((_: CharSequence) => lineSearchInstance)
         trainer.setTerminateThreshold(java.lang.Double.NEGATIVE_INFINITY)
-        val result = trainer.run(out).asInstanceOf[lang.Double]
-        trainer.freeRef()
-        result
+        try {
+          trainer.run(out)
+        } finally {
+          trainer.freeRef()
+        }
       })(out)
     }(out)
   }

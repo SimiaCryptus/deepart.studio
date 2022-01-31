@@ -109,7 +109,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     initUrl: String,
     canvases: mutable.Buffer[RefAtomicReference[Tensor]],
     networks: mutable.Buffer[(Double, VisualNetwork)],
-    optimizer: BasicOptimizer,
+    optimizer: ImageOptimizer,
     resolutions: Seq[Double],
     renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1),
     getParams: (mutable.Buffer[(Double, VisualNetwork)], Double) => VisualNetwork = (networks: mutable.Buffer[(Double, VisualNetwork)], x: Double) => {
@@ -177,7 +177,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     initUrl: String,
     canvas: RefAtomicReference[Tensor],
     network: VisualNetwork,
-    optimizer: BasicOptimizer,
+    optimizer: ImageOptimizer,
     aspect: Option[Double],
     resolutions: Seq[Double]
   )(implicit sub: NotebookOutput): Double = paint(
@@ -195,7 +195,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     initFn: Tensor => Tensor,
     canvas: RefAtomicReference[Tensor],
     network: VisualNetwork,
-    optimizer: BasicOptimizer,
+    optimizer: ImageOptimizer,
     resolutions: Seq[Double],
     renderingFn: Seq[Int] => PipelineNetwork = x => new PipelineNetwork(1),
     aspect: Option[Double] = None
@@ -288,7 +288,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
 
   def paint
   (
-    optimizer: BasicOptimizer,
+    optimizer: ImageOptimizer,
     resolutions: Seq[Double],
     prep: Double => (Tensor, Trainable)
   )(implicit log: NotebookOutput): Double = {
@@ -296,7 +296,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
       if(resolutions.size > 1) log.h1("Resolution " + res)
       val (currentCanvas: Tensor, trainable: Trainable) = prep(res)
       optimizer.optimize(currentCanvas, trainable)
-    }).last
+    }).last.finalValue
   }
 
   def paint_aspectFn
@@ -305,7 +305,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     initFn: Tensor => Tensor,
     canvas: RefAtomicReference[Tensor],
     network: VisualNetwork,
-    optimizer: BasicOptimizer,
+    optimizer: ImageOptimizer,
     resolutions: Seq[Double],
     heightFn: Option[Int => Int]
   )(implicit log: NotebookOutput): Double = {
@@ -326,7 +326,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     initFn: Tensor => Tensor,
     canvas: RefAtomicReference[Tensor],
     network: VisualNetwork,
-    optimizer: BasicOptimizer,
+    optimizer: ImageOptimizer,
     resolutions: Double*
   )(implicit log: NotebookOutput): Double = paint(
     contentUrl = contentUrl,
@@ -343,7 +343,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     initFn: Tensor => Tensor,
     canvas: RefAtomicReference[Tensor],
     network: VisualNetwork,
-    optimizer: BasicOptimizer,
+    optimizer: ImageOptimizer,
     renderingFn: Seq[Int] => PipelineNetwork,
     resolutions: Double*
   )(implicit log: NotebookOutput): Double = paint(
@@ -355,7 +355,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     renderingFn = renderingFn,
     resolutions = resolutions)
 
-  def texture(aspectRatio: Double, initUrl: String, canvas: RefAtomicReference[Tensor], network: VisualNetwork, optimizer: BasicOptimizer, resolutions: Seq[Double])(implicit log: NotebookOutput): Double = {
+  def texture(aspectRatio: Double, initUrl: String, canvas: RefAtomicReference[Tensor], network: VisualNetwork, optimizer: ImageOptimizer, resolutions: Seq[Double])(implicit log: NotebookOutput): Double = {
     def prep(width: Double) = {
       CudaSettings.INSTANCE().setDefaultPrecision(network.precision)
       val height = width * aspectRatio
@@ -400,13 +400,13 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
 
     if (resolutions.size == 1) {
       val (currentCanvas: Tensor, trainable: Trainable) = prep(resolutions.head)
-      run(currentCanvas, trainable)
+      run(currentCanvas, trainable).finalValue
     } else {
       (for (res <- resolutions) yield {
         log.h1("Resolution " + res)
         val (currentCanvas: Tensor, trainable: Trainable) = prep(res)
         run(currentCanvas, trainable)
-      }).last
+      }).last.finalValue
     }
   }
 

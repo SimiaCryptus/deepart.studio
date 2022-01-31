@@ -48,9 +48,7 @@ class ImageSource(urls: Seq[String])(implicit val log: NotebookOutput) {
           Tensor.fromRGB(resized)
         })
       }).toBuffer
-    require(!styles.isEmpty)
     while (styles.map(_.getDimensions).map(d => d(0) * d(1)).sum > maxPixels) styles.remove(0).freeRef()
-    require(!styles.isEmpty)
     styles.toArray
   }
 
