@@ -260,4 +260,41 @@ object ArtUtil {
     buffer.toArray
   }
 
+  def colorTransferLAB(colorReference: Tensor, image: Tensor) = {
+    ColorTransforms.lab2rgb(ColorTransforms.colorTransfer_primaries(ColorTransforms.rgb2lab(colorReference), ColorTransforms.rgb2lab(image)))
+  }
+
+  def colorTransferXYZ(colorReference: Tensor, image: Tensor) = {
+    ColorTransforms.xyz2rgb(ColorTransforms.colorTransfer_primaries(ColorTransforms.rgb2xyz(colorReference), ColorTransforms.rgb2xyz(image)))
+  }
+
+  def colorTransferHSL(colorReference: Tensor, image: Tensor) = {
+    ColorTransforms.hsl2rgb(ColorTransforms.colorTransfer_primaries(ColorTransforms.rgb2hsl(colorReference), ColorTransforms.rgb2hsl(image)))
+  }
+
+  def colorTransferHSV(colorReference: Tensor, image: Tensor) = {
+    ColorTransforms.hsv2rgb(ColorTransforms.colorTransfer_primaries(ColorTransforms.rgb2hsv(colorReference), ColorTransforms.rgb2hsv(image)))
+  }
+
+  var transfer_random: (Tensor, Tensor, Int) => Tensor = (colorReference, image, iterations) => {
+    //ColorTransforms.colorTransfer_random_geometricDamping(colorReference, image, iterations, 1.0 / 2)
+    //ColorTransforms.colorTransfer_random_arithmeticDamping(colorReference, image, iterations, 1.0 / 2)
+    ColorTransforms.colorTransfer_random(colorReference, image, iterations)
+  }
+
+  def colorTransferLAB(colorReference: Tensor, image: Tensor, iterations: Int) = {
+    ColorTransforms.lab2rgb(transfer_random(ColorTransforms.rgb2lab(colorReference), ColorTransforms.rgb2lab(image), iterations))
+  }
+
+  def colorTransferXYZ(colorReference: Tensor, image: Tensor, iterations: Int) = {
+    ColorTransforms.xyz2rgb(transfer_random(ColorTransforms.rgb2xyz(colorReference), ColorTransforms.rgb2xyz(image), iterations))
+  }
+
+  def colorTransferHSL(colorReference: Tensor, image: Tensor, iterations: Int) = {
+    ColorTransforms.hsl2rgb(transfer_random(ColorTransforms.rgb2hsl(colorReference), ColorTransforms.rgb2hsl(image), iterations))
+  }
+
+  def colorTransferHSV(colorReference: Tensor, image: Tensor, iterations: Int) = {
+    ColorTransforms.hsv2rgb(transfer_random(ColorTransforms.rgb2hsv(colorReference), ColorTransforms.rgb2hsv(image), iterations))
+  }
 }
