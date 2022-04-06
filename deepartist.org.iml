@@ -312,7 +312,7 @@
     <orderEntry type="library" name="Maven: org.bytedeco.javacpp-presets:hdf5:1.10.4-1.4.4" level="project" />
     <orderEntry type="module" module-name="sparkbook" />
     <orderEntry type="library" name="Maven: com.fasterxml.jackson.module:jackson-module-scala_2.12:2.12.0" level="project" />
-    <orderEntry type="library" name="Maven: org.scala-lang:scala-reflect:2.12.12" level="project" />
+    <orderEntry type="library" name="Maven: org.scala-lang:scala-reflect:2.12.15" level="project" />
     <orderEntry type="library" name="Maven: org.lz4:lz4-java:1.7.1" level="project" />
     <orderEntry type="library" name="Maven: org.apache.spark:spark-hive_2.12:3.0.1" level="project" />
     <orderEntry type="library" name="Maven: org.apache.hive:hive-common:2.3.7" level="project" />
@@ -369,8 +369,8 @@
     <orderEntry type="library" scope="TEST" name="Maven: org.scalatest:scalatest-matchers-core_2.12:3.3.0-SNAP3" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.scalatest:scalatest-shouldmatchers_2.12:3.3.0-SNAP3" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.scalatest:scalatest-mustmatchers_2.12:3.3.0-SNAP3" level="project" />
-    <orderEntry type="library" name="Maven: org.scala-lang:scala-library:2.12.12" level="project" />
-    <orderEntry type="library" name="Maven: org.scala-lang:scala-compiler:2.12.12" level="project" />
+    <orderEntry type="library" name="Maven: org.scala-lang:scala-library:2.12.15" level="project" />
+    <orderEntry type="library" name="Maven: org.scala-lang:scala-compiler:2.12.15" level="project" />
     <orderEntry type="library" name="Maven: org.scala-lang.modules:scala-xml_2.12:2.0.0-M3" level="project" />
     <orderEntry type="library" name="Maven: com.google.code.gson:gson:2.8.6" level="project" />
     <orderEntry type="library" name="Maven: commons-io:commons-io:2.8.0" level="project" />

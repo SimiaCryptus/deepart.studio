@@ -34,6 +34,14 @@ trait TaskRegistry {
 
   def s3bucket: String
 
+  /**
+   * Registers the given canvas with the index, with an optional delay (in ms).
+   *
+   * @param canvas the canvas to register
+   * @param delay  the delay (in ms)
+   * @param log    the notebook output
+   * @docgenVersion 9
+   */
   def registerWithIndexGIF(canvas: => Seq[BufferedImage], delay: Int = 100)(implicit log: NotebookOutput) = {
     implicit val s3client: AmazonS3 = S3Util.getS3(log.getArchiveHome)
     val archiveHome = log.getArchiveHome
@@ -64,6 +72,14 @@ trait TaskRegistry {
 
   def description: String = ""
 
+  /**
+   * Registers the given canvas with the index, with a cyclic GIF of the given delay.
+   *
+   * @param canvas the canvas to register
+   * @param delay  the delay between frames of the GIF
+   * @param log    the notebook output
+   * @docgenVersion 9
+   */
   def registerWithIndexGIF_Cyclic(canvas: => Seq[Tensor], delay: Int = 100)(implicit log: NotebookOutput) = {
     val archiveHome = log.getArchiveHome
     implicit val s3client: AmazonS3 = S3Util.getS3(archiveHome)
@@ -88,6 +104,12 @@ trait TaskRegistry {
     ).start()(s3client, ec2client)) else None
   }
 
+  /**
+   * Registers the given canvas with the index, returning a JobRegistration
+   * if successful.
+   *
+   * @docgenVersion 9
+   */
   def registerWithIndexJPG(canvas: () => Tensor)(implicit log: NotebookOutput): Option[JobRegistration[Tensor]] = {
     val archiveHome = log.getArchiveHome
     implicit val s3client: AmazonS3 = S3Util.getS3(archiveHome)

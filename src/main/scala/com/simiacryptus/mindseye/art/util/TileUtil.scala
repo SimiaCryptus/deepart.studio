@@ -14,6 +14,11 @@ import com.simiacryptus.notebook.NotebookOutput
 import scala.util.Random
 
 object TileUtil {
+  /**
+   * Defines a loss function that takes in a color mapping layer and a summarizer layer.
+   *
+   * @docgenVersion 9
+   */
   def lossFunction(colorMappingLayer: Layer, summarizer: () => Layer) = {
     val network = new PipelineNetwork(2)
     network.add(
@@ -36,7 +41,24 @@ object TileUtil {
     network
   }
 
+  /**
+   * Reassemble the content tensor using the given selectors and tiles.
+   *
+   * @param contentTensor the tensor to reassemble
+   * @param selectors     an array of layers to use as selectors
+   * @param tiles         an array of tensors to use as tiles
+   * @param output        the notebook output to use
+   * @docgenVersion 9
+   */
   def reassemble(contentTensor: Tensor, selectors: Array[Layer], tiles: Array[Tensor], output: NotebookOutput) = {
+    /**
+     * This function optimizes a pipeline network for a given set of tiles.
+     *
+     * @param network The pipeline network to optimize.
+     * @param tiles   The tiles to use for optimization.
+     * @return The optimized network.
+     * @docgenVersion 9
+     */
     def optimize(network: PipelineNetwork, tiles: Array[Tensor]): Double = {
       val trainable = new ArrayTrainable(network, 1)
       trainable.setTrainingData(Array(Array(contentTensor.addRef()) ++ tiles))
@@ -48,13 +70,29 @@ object TileUtil {
       trainer.setLineSearchFactory(_ => new QuadraticSearch)
       trainer.setOrientation(new GradientDescent)
       trainer.setMonitor(new TrainingMonitor {
+        /**
+         * Overrides the log method to just call the superclass's log method.
+         *
+         * @docgenVersion 9
+         */
         override def log(msg: String): Unit = super.log(msg)
 
+        /**
+         * This method is called when a step is completed.
+         *
+         * @param currentPoint the current point in the iteration
+         * @docgenVersion 9
+         */
         override def onStepComplete(currentPoint: Step): Unit = {
           output.out(s"Step ${currentPoint.iteration} completed, fitness=${currentPoint.point.sum}")
           currentPoint.freeRef()
         }
 
+        /**
+         * Overrides the onStepFail method to return the superclass' onStepFail method.
+         *
+         * @docgenVersion 9
+         */
         override def onStepFail(currentPoint: Step): Boolean = super.onStepFail(currentPoint)
       })
       val result = trainer.run()

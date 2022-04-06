@@ -42,20 +42,55 @@ import javax.imageio.ImageIO
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
+/**
+ * This is the abstract class for the SegmentingSetup.
+ * It inherits from ArtSetup[Object, SegmentingSetup].
+ *
+ * @docgenVersion 9
+ */
 abstract class SegmentingSetup extends ArtSetup[Object, SegmentingSetup] {
 
   @JsonIgnore lazy val fastPhotoStyleTransfer = FastPhotoStyleTransfer.fromZip(new ZipFile(Util.cacheFile(new URI(
     "https://simiacryptus.s3-us-west-2.amazonaws.com/photo_wct.zip"))))
 
+  /**
+   * Smooths the given style tensor using the given content and mask tensors.
+   *
+   * @param content the content tensor to use for smoothing
+   * @param style   the style tensor to smooth
+   * @param mask    the mask tensor to use
+   * @param log     the notebook output to use
+   * @docgenVersion 9
+   */
   def smoothStyle(content: Tensor, style: Tensor, mask: Tensor)(implicit log: NotebookOutput) = {
     maskedDelta(mask, content, smoother(content)(wct(content, style, mask)))
   }
 
+  /**
+   * Performs weighted color transfer (WCT) on the given content and style images,
+   * using the given mask to determine which pixels to transfer colors for.
+   *
+   * @param content the content image to perform WCT on
+   * @param style   the style image to use as the source of colors
+   * @param mask    a binary mask image indicating which pixels in the content image
+   *                should have their colors transferred
+   * @return the content image with colors transferred from the style image
+   * @docgenVersion 9
+   */
   def wct(content: Tensor, style: Tensor, mask: Tensor) = {
     val wctRestyled = fastPhotoStyleTransfer.photoWCT(style, content, mask.doubleStream().average().getAsDouble, 1.0)
     maskedDelta(mask, content, wctRestyled)
   }
 
+  /**
+   * Returns the delta between two tensors, masked by a third tensor.
+   *
+   * @param mask    The tensor to use as a mask
+   * @param base    The tensor to compare against
+   * @param changed The tensor to compare
+   * @return The delta between the two tensors, masked by the third tensor
+   * @docgenVersion 9
+   */
   def maskedDelta(mask: Tensor, base: Tensor, changed: Tensor) = {
     val tensor = changed.mapCoords((c: Coordinate) => {
       val bg = mask.get(c)
@@ -68,6 +103,13 @@ abstract class SegmentingSetup extends ArtSetup[Object, SegmentingSetup] {
     tensor
   }
 
+  /**
+   * This function creates a smoother for the given content.
+   *
+   * @param content the content to create a smoother for
+   * @return the smoother
+   * @docgenVersion 9
+   */
   def smoother(content: Tensor) = {
     val topology = new SearchRadiusTopology(content)
     topology.setSelfRef(true)
@@ -82,6 +124,14 @@ abstract class SegmentingSetup extends ArtSetup[Object, SegmentingSetup] {
 
   def solver: SmoothSolver = new SmoothSolver_Cuda()
 
+  /**
+   * Draws a mask on top of the given content image, using the given colors.
+   *
+   * @param content The image to draw the mask on.
+   * @param colors  The colors to use for the mask.
+   * @param log     The notebook output to use.
+   * @docgenVersion 9
+   */
   def drawMask(content: BufferedImage, colors: Color*)(implicit log: NotebookOutput) = {
     val image_tensor: Tensor = Tensor.fromRGB(content)
     val dimensions: Array[Int] = image_tensor.getDimensions
@@ -255,10 +305,23 @@ abstract class SegmentingSetup extends ArtSetup[Object, SegmentingSetup] {
     }
   }
 
+  /**
+   * Selects an image from a notebook output.
+   *
+   * @param log    The notebook output.
+   * @param image  The image to select.
+   * @param colors The colors to select.
+   * @docgenVersion 9
+   */
   def select(log: NotebookOutput, image: BufferedImage, colors: Color*) = {
     val editResult = new EditImageQuery(log, image).print().get()
     val diff_tensor = diff(Tensor.fromRGB(image), Tensor.fromRGB(editResult))
 
+    /**
+     * Converts an array of doubles into a list of integers.
+     *
+     * @docgenVersion 9
+     */
     def apxColor(a: Array[Double]): List[Int] = a.map(x => x.toInt).toList
 
     val colorList = diff_tensor.getPixelStream.collect(Collectors.toList())
@@ -273,6 +336,12 @@ abstract class SegmentingSetup extends ArtSetup[Object, SegmentingSetup] {
     (x: Int, y: Int) => colorsMap.get(apxColor(diff_tensor.getPixel(x, y))).flatMap(selectionIndexToColorIndex.get(_))
   }
 
+  /**
+   * uploadMask takes a BufferedImage and a variable number of Colors and produces
+   * a notebook output
+   *
+   * @docgenVersion 9
+   */
   def uploadMask(content: BufferedImage, colors: Color*)(implicit log: NotebookOutput) = {
     val maskFile = new UploadImageQuery("Upload Mask", log).print().get()
     val maskTensor = Tensor.fromRGB(ImageUtil.resize(ImageIO.read(maskFile), content.getWidth, content.getHeight))
@@ -293,6 +362,14 @@ abstract class SegmentingSetup extends ArtSetup[Object, SegmentingSetup] {
     tensors
   }
 
+  /**
+   * Calculates the distance between a color and a list of numbers.
+   *
+   * @param color the color to compare
+   * @param x     the list of numbers to compare
+   * @return the distance between the color and the list of numbers
+   * @docgenVersion 9
+   */
   def dist(color: Color, x: Seq[Double]) = {
     List(
       color.getRed - x(2).doubleValue(),
@@ -301,10 +378,23 @@ abstract class SegmentingSetup extends ArtSetup[Object, SegmentingSetup] {
     ).map(x => x * x).sum
   }
 
+  /**
+   * Selects a notebook output and image from a given partition.
+   *
+   * @param log        The notebook output to select
+   * @param image      The image to select
+   * @param partitions The number of partitions
+   * @docgenVersion 9
+   */
   def select(log: NotebookOutput, image: BufferedImage, partitions: Int) = {
     val editResult = new EditImageQuery(log, image).print().get()
     var diff_tensor = diff(Tensor.fromRGB(image), Tensor.fromRGB(editResult))
 
+    /**
+     * Converts an array of doubles into a list of integers.
+     *
+     * @docgenVersion 9
+     */
     def apxColor(a: Array[Double]): List[Int] = a.map(x => x.toInt).toList
 
     val dimensions = diff_tensor.getDimensions
@@ -314,6 +404,14 @@ abstract class SegmentingSetup extends ArtSetup[Object, SegmentingSetup] {
     (x: Int, y: Int) => colors.get(apxColor(diff_tensor.getPixel(x, y)))
   }
 
+  /**
+   * Calculates the difference between two images represented as tensors.
+   *
+   * @param image_tensor The first image tensor.
+   * @param edit_tensor  The second image tensor.
+   * @return The difference between the two image tensors.
+   * @docgenVersion 9
+   */
   def diff(image_tensor: Tensor, edit_tensor: Tensor): Tensor = {
     edit_tensor.mapCoords((c: Coordinate) => {
       val val_tensor = image_tensor.get(c.getIndex)
@@ -326,6 +424,15 @@ abstract class SegmentingSetup extends ArtSetup[Object, SegmentingSetup] {
     })
   }
 
+  /**
+   * This function expands a given region tree by recursively applying a markup function.
+   *
+   * @param tree      The region tree to expand.
+   * @param markup    The markup function to apply.
+   * @param recursion The level of recursion to apply. Defaults to 0.
+   * @return A map of expanded regions.
+   * @docgenVersion 9
+   */
   def expand(tree: RegionAssembler.RegionTree, markup: Map[Int, Set[Int]], recursion: Int = 0): Map[Int, Int] = {
     if (recursion > 1000) throw new RuntimeException()
     val paints = tree.regions.flatMap(r => markup.get(r)).flatten.distinct

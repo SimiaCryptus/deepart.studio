@@ -28,6 +28,22 @@ import com.amazonaws.services.s3.model.{CannedAccessControlList, ObjectMetadata,
 import com.simiacryptus.aws.EC2Util
 import com.simiacryptus.sparkbook.NotebookRunner
 
+/**
+ * This class represents a job registration for a GIF.
+ *
+ * @param bucket      the bucket to store the GIF in
+ * @param reportUrl   the URL to report the status of the job to
+ * @param liveUrl     the URL to view the live results of the job
+ * @param canvas      a function that returns the sequence of images to use in the GIF
+ * @param instances   the list of instances to run the job on
+ * @param id          the id of the job
+ * @param indexFile   the index file to use
+ * @param className   the class name to use
+ * @param indexStr    the index string to use
+ * @param description the description of the job
+ * @param delay       the delay between frames in the GIF, in milliseconds
+ * @docgenVersion 9
+ */
 class GifRegistration
 (
   bucket: String,
@@ -45,6 +61,13 @@ class GifRegistration
   delay: Int = 100
 ) extends JobRegistration[Seq[BufferedImage]](bucket, reportUrl, liveUrl, canvas, instances, id, indexFile, className, indexStr, description) {
 
+  /**
+   * Uploads an image to Amazon S3
+   *
+   * @param canvas   the image to upload
+   * @param s3client an AmazonS3 client
+   * @docgenVersion 9
+   */
   def uploadImage(canvas: Seq[BufferedImage])(implicit s3client: AmazonS3) = {
     val key = s"img/$id.gif"
     logger.info("Writing " + key)

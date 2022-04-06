@@ -26,6 +26,21 @@ import com.amazonaws.services.s3.model.{CannedAccessControlList, ObjectMetadata,
 import com.simiacryptus.aws.EC2Util
 import com.simiacryptus.mindseye.lang.Tensor
 
+/**
+ * This class represents a job registration for a JPG file.
+ *
+ * @param bucket      the name of the bucket where the file is located
+ * @param reportUrl   the URL of the report page for this job
+ * @param liveUrl     the URL of the live page for this job
+ * @param canvas      a function that returns a Tensor representing the file's contents
+ * @param instances   a list of instances where this job is running; defaults to the current instance's ID
+ * @param id          the job's ID
+ * @param indexFile   the name of the index file for this job; defaults to "index.html"
+ * @param className   the name of the class for this job
+ * @param indexStr    a string to be written to the index file for this job
+ * @param description a description of this job
+ * @docgenVersion 9
+ */
 class JpgRegistration
 (
   bucket: String,
@@ -42,6 +57,13 @@ class JpgRegistration
   description: String = ""
 ) extends JobRegistration[Tensor](bucket, reportUrl, liveUrl, canvas, instances, id, indexFile, className, indexStr, description) {
 
+  /**
+   * Upload an image to Amazon S3
+   *
+   * @param canvas   the image to upload
+   * @param s3client an AmazonS3 client
+   * @docgenVersion 9
+   */
   def uploadImage(canvas: Tensor)(implicit s3client: AmazonS3) = {
     val key = s"img/$id.jpg"
     logger.info("Writing " + key)

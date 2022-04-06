@@ -32,6 +32,13 @@ import com.simiacryptus.ref.lang.RefUtil
 
 object VisualStyleNetwork {
 
+  /**
+   * Returns the number of pixels in the given canvas.
+   *
+   * @param canvas the canvas to check
+   * @return the number of pixels in the canvas
+   * @docgenVersion 9
+   */
   def pixels(canvas: Tensor) = {
     if (null == canvas) 0 else {
       val dimensions = canvas.getDimensions
@@ -43,6 +50,11 @@ object VisualStyleNetwork {
 
 }
 
+/**
+ * This is a case class for a VisualStyleNetwork. It takes in parameters for styleLayers, styleModifiers, styleUrls, precision, viewLayer, filterStyleInput, tileSize, tilePadding, minWidth, maxWidth, maxPixels, magnification, and log.
+ *
+ * @docgenVersion 9
+ */
 case class VisualStyleNetwork
 (
   styleLayers: Seq[VisionPipelineLayer] = Seq.empty,
@@ -59,37 +71,61 @@ case class VisualStyleNetwork
   override val magnification: Seq[Double] = Array(1.0)
 )(implicit override val log: NotebookOutput) extends ImageSource(styleUrls) with VisualNetwork {
 
+  /**
+   * This function applies the given content to the given canvas.
+   *
+   * @param canvas  The canvas to apply the content to.
+   * @param content The content to apply to the canvas.
+   * @docgenVersion 9
+   */
   def apply(canvas: Tensor, content: Tensor): Trainable = {
     val dimensions = content.getDimensions
     content.freeRef()
     apply(canvas, dimensions)
   }
 
+  /**
+   * Applies the given canvas to the given dimensions.
+   *
+   * @docgenVersion 9
+   */
   def apply(canvas: Tensor, dimensions: Array[Int]) = {
-    val loadedImages = loadImages(dimensions.reduce(_*_))
+    val loadedImages = loadImages(dimensions.reduce(_ * _))
     try {
       val contentDimensions = dimensions
       new SumTrainable((for (
         pipelineLayers <- styleLayers.groupBy(_.getPipelineName).values
       ) yield {
         var styleNetwork: PipelineNetwork = null
-        if(!filterStyleInput) styleNetwork = SumInputsLayer.combine(pipelineLayers.map(pipelineLayer => {
-          val network = styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, (x:Tensor)=>x, RefUtil.addRef(loadedImages): _*)
+        if (!filterStyleInput) styleNetwork = SumInputsLayer.combine(pipelineLayers.map(pipelineLayer => {
+          val network = styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, (x: Tensor) => x, RefUtil.addRef(loadedImages): _*)
           network.freeze()
           network
         }): _*)
-        for(layer <- viewLayer(contentDimensions)) yield {
-          if(filterStyleInput) styleNetwork = SumInputsLayer.combine(pipelineLayers.map(pipelineLayer => {
+        for (layer <- viewLayer(contentDimensions)) yield {
+          if (filterStyleInput) styleNetwork = SumInputsLayer.combine(pipelineLayers.map(pipelineLayer => {
             val network = styleModifiers.reduce(_ combine _).build(pipelineLayer, contentDimensions, layer.asTensorFunction(), RefUtil.addRef(loadedImages): _*)
             network.freeze()
             network
           }): _*)
           new TiledTrainable(canvas.addRef(), layer, tileSize, tilePadding, precision) {
 
+            /**
+             * Returns the layer of the style network.
+             *
+             * @docgenVersion 9
+             */
             override def getLayer(): Layer = {
               styleNetwork.addRef()
             }
 
+            /**
+             * Returns the network for the given region selector.
+             *
+             * @param regionSelector The region selector layer.
+             * @return The network for the given region selector.
+             * @docgenVersion 9
+             */
             override protected def getNetwork(regionSelector: Layer): PipelineNetwork = {
               regionSelector.freeRef()
               val network = styleNetwork.addRef()
@@ -97,6 +133,11 @@ case class VisualStyleNetwork
               network
             }
 
+            /**
+             * Frees the resources used by this object.
+             *
+             * @docgenVersion 9
+             */
             override def _free(): Unit = {
               styleNetwork.freeRef()
               super._free()
@@ -110,6 +151,14 @@ case class VisualStyleNetwork
     }
   }
 
+  /**
+   * This function defines a content network for visual style transfer.
+   *
+   * @param contentLayers    A sequence of vision pipeline layers that represent the content of the image.
+   * @param contentModifiers A sequence of visual modifiers that are applied to the content layers.
+   * @return A visual style content network.
+   * @docgenVersion 9
+   */
   def withContent(
                    contentLayers: Seq[VisionPipelineLayer],
                    contentModifiers: Seq[VisualModifier] = List(new ContentMatcher)

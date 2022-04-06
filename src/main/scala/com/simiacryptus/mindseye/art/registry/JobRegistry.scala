@@ -32,6 +32,14 @@ import scala.util.Try
 
 object JobRegistry {
 
+  /**
+   * Lists the job registries in the specified bucket.
+   *
+   * @param bucket   the bucket to list
+   * @param s3client the Amazon S3 client
+   * @return a sequence of job registries
+   * @docgenVersion 9
+   */
   def list(bucket: String)(implicit s3client: AmazonS3): Seq[JobRegistry] = {
     val objectListing = s3client.listObjects(new ListObjectsRequest().withBucketName(bucket).withPrefix("jobs/"))
     (for (item <- objectListing.getObjectSummaries.asScala) yield {
@@ -41,6 +49,11 @@ object JobRegistry {
 
 }
 
+/**
+ * This case class represents a job registry, which contains information about a job such as its report URL, live URL, last report, instances, image, id, class name, index string, and description.
+ *
+ * @docgenVersion 9
+ */
 case class JobRegistry
 (
   reportUrl: String,
@@ -54,16 +67,38 @@ case class JobRegistry
   description: String
 ) {
 
+  /**
+   * Save the job to the specified S3 bucket.
+   *
+   * @param bucket   the S3 bucket to save to
+   * @param s3client the AmazonS3 client to use
+   * @return the S3 URL of the saved job
+   * @docgenVersion 9
+   */
   def save(bucket: String)(implicit s3client: AmazonS3) = {
     val key = s"jobs/$id.json"
     s3client.putObject(bucket, key, ScalaJson.toJson(this).toString)
     s"s3://$bucket/$key"
   }
 
+  /**
+   * Checks if there are any running instances.
+   *
+   * @param ec2client the AmazonEC2 client
+   * @return true if there are running instances, false otherwise
+   * @docgenVersion 9
+   */
   def isLive()(implicit ec2client: AmazonEC2) = Try {
     !runningInstances(ec2client).isEmpty
   }
 
+  /**
+   * Returns a list of running instances.
+   *
+   * @param ec2client the Amazon EC2 client
+   * @return a list of running instances
+   * @docgenVersion 9
+   */
   def runningInstances(implicit ec2client: AmazonEC2) = {
     val instances = this.instances.filterNot(_.isEmpty)
     ec2client.describeInstanceStatus(new DescribeInstanceStatusRequest()

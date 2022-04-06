@@ -11,11 +11,28 @@ import com.simiacryptus.sparkbook.NotebookRunner.withMonitoredJpg
 trait ImageTileProcessor {
   def tile_padding: Int
 
+  /**
+   * Paints a tile on the canvas.
+   *
+   * @param canvasRef   The canvas to paint on.
+   * @param tile_size   The size of the tile.
+   * @param tilePainter The tile painter function.
+   * @param log         The notebook output.
+   * @docgenVersion 9
+   */
   def paintPerTile(canvasRef: RefAtomicReference[Tensor], tile_size: Int, tilePainter: (Tensor, RefAtomicReference[Tensor]) => Unit)(implicit log: NotebookOutput) = {
     val canvas = canvasRef.get()
     val canvasSize = canvas.getDimensions()
     val priorTiles = Array.empty[Tensor].toBuffer
 
+    /**
+     * Fades the given tile by multiplying each element by the corresponding element in the mask tile.
+     *
+     * @param tile          the tile to fade
+     * @param tileView_fade the tile view containing the mask tile
+     * @return the faded tile
+     * @docgenVersion 9
+     */
     def fade(tile: Tensor, tileView_fade: Layer) = {
       val maskTile = Result.getData0(tileView_fade.eval(canvas.map(x => 1)))
       require(maskTile.getDimensions.toList == tile.getDimensions.toList, s"${maskTile.getDimensions.toList} != ${tile.getDimensions.toList}")

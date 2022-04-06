@@ -30,16 +30,30 @@ object ImageSource {
 
 }
 
+/**
+ * Class for image sources.
+ *
+ * @param urls the URLs for the images
+ * @param log  the notebook output
+ * @docgenVersion 9
+ */
 class ImageSource(urls: Seq[String])(implicit val log: NotebookOutput) {
   def tileSize: Int = 400
 
   def tilePadding: Int = 16
 
+  /**
+   * Loads images into an array of Tensors
+   *
+   * @param canvasPixels the number of pixels in the canvas
+   * @return an array of Tensors
+   * @docgenVersion 9
+   */
   def loadImages(canvasPixels: Int): Array[Tensor] = {
     val images = Random.shuffle(ImageArtUtil.loadImages(log, urls.asJava, -1).toList)
     val styles = images
       .flatMap(styleImage => {
-        magnification.map(magnification=>{
+        magnification.map(magnification => {
           val stylePixels = styleImage.getWidth * styleImage.getHeight
           var finalWidth = if (canvasPixels > 0) (styleImage.getWidth * Math.sqrt((canvasPixels.toDouble / stylePixels) * magnification)).toInt else -1
           if (finalWidth < minWidth && finalWidth > 0) finalWidth = minWidth

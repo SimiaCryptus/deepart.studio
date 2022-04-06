@@ -11,7 +11,12 @@ import com.simiacryptus.notebook.NotebookOutput
 
 object NetworkUtil {
 
-  def graph(trainable: Trainable)(implicit log: NotebookOutput): Unit  = {
+  /**
+   * Graph the given trainable using the implicit log.
+   *
+   * @docgenVersion 9
+   */
+  def graph(trainable: Trainable)(implicit log: NotebookOutput): Unit = {
     val layer = trainable.getLayer
     trainable.freeRef()
     if (layer != null) {
@@ -23,7 +28,12 @@ object NetworkUtil {
     }
   }
 
-  def debugSummary(layer: Layer)(implicit log: NotebookOutput) : Unit = {
+  /**
+   * Prints a summary of the given layer to the notebook output.
+   *
+   * @docgenVersion 9
+   */
+  def debugSummary(layer: Layer)(implicit log: NotebookOutput): Unit = {
     if (layer.isInstanceOf[WrapperLayer]) {
       val inner = layer.asInstanceOf[WrapperLayer].getInner
       log.p(s"${layer.getName} wraps ${inner.getName}")
@@ -36,7 +46,14 @@ object NetworkUtil {
 
   }
 
-  def graph(network: DAGNetwork)(implicit log: NotebookOutput) : Unit = {
+  /**
+   * This function graphs a DAGNetwork.
+   *
+   * @param network The DAGNetwork to graph.
+   * @param log     The NotebookOutput to use.
+   * @docgenVersion 9
+   */
+  def graph(network: DAGNetwork)(implicit log: NotebookOutput): Unit = {
     log.subreport(s"Network Diagram - ${network.getName}", (sub: NotebookOutput) => {
       val layers = network.getLayers
       GraphVizNetworkInspector.graph(sub, network)
@@ -55,13 +72,21 @@ object NetworkUtil {
     })
   }
 
-  def graph(network: DAGNetwork, sampleInput: TensorList*)(implicit log: NotebookOutput) : Unit = {
+  /**
+   * Graph the given DAGNetwork using the provided sampleInput.
+   *
+   * @param network     the DAGNetwork to graph
+   * @param sampleInput the input to use for graphing
+   * @param log         the NotebookOutput to use
+   * @docgenVersion 9
+   */
+  def graph(network: DAGNetwork, sampleInput: TensorList*)(implicit log: NotebookOutput): Unit = {
     log.subreport(s"Network Diagram - ${network.getName}", (sub: NotebookOutput) => {
 
       val nodes = network.getNodes
       GraphVizNetworkInspector.graph(sub, network)
 
-      val evaluationContext = network.buildExeCtx(sampleInput.map(new Result(_)):_*)
+      val evaluationContext = network.buildExeCtx(sampleInput.map(new Result(_)): _*)
 
       val head = network.getHead
       val networkResult = head.eval(evaluationContext.addRef())
@@ -74,12 +99,18 @@ object NetworkUtil {
         } finally {
           tensor.freeRef()
         }
-      }):_*))
+      }): _*))
       head.freeRef()
       outputData(Result.getData(networkResult), "Network output")(sub)
       (0 until nodes.size()).foreach(i => {
         val node: DAGNode = nodes.get(i)
 
+        /**
+         * Logs the delta for the given layer.
+         *
+         * @param layer the layer to log the delta for
+         * @docgenVersion 9
+         */
         def logDelta(layer: Layer) = {
           outputData({
             val value = deltaset.get(layer.getId)
@@ -95,6 +126,11 @@ object NetworkUtil {
           }, s"Delta for ${layer.getName}")(sub)
         }
 
+        /**
+         * Outputs the given layer.
+         *
+         * @docgenVersion 9
+         */
         def output(layer: Layer): Unit = {
           if (layer.isInstanceOf[DAGNetwork]) {
             graph(layer.asInstanceOf[DAGNetwork], node.getInputs.map(inputNode => {
@@ -128,8 +164,13 @@ object NetworkUtil {
     })
   }
 
+  /**
+   * Outputs the given data with the given label to the notebook output.
+   *
+   * @docgenVersion 9
+   */
   def outputData(data: Array[Double], label: String)(implicit log: NotebookOutput) = {
-    if(null == data) {
+    if (null == data) {
       log.p(s"$label: No Data")
     } else {
       val fileName = s"${UUID.randomUUID().toString}.json"
@@ -137,6 +178,14 @@ object NetworkUtil {
     }
   }
 
+  /**
+   * Outputs the data from the given network output and label.
+   *
+   * @param networkOutput the output from the network
+   * @param label         the label for the data
+   * @param log           the log to output to
+   * @docgenVersion 9
+   */
   def outputData(networkOutput: TensorList, label: String)(implicit log: NotebookOutput) = {
     val fileName = s"${UUID.randomUUID().toString}.json"
     log.p(s"$label: " + log.file(networkOutput.getJsonRaw().toString, fileName, fileName))

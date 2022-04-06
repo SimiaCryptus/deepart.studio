@@ -21,12 +21,23 @@ package com.simiacryptus.mindseye.art.util
 
 import com.simiacryptus.notebook.NotebookOutput
 
+/**
+ * An abstract class for a RotorArt object. The class takes in an integer for the number of rotational segments and extends the ArtSetup and GeometricArt traits.
+ *
+ * @docgenVersion 9
+ */
 abstract class RotorArt[U <: RotorArt[U]](
-                         val rotationalSegments: Int = 3
-                       ) extends ArtSetup[Object,U] with GeometricArt {
+                                           val rotationalSegments: Int = 3
+                                         ) extends ArtSetup[Object, U] with GeometricArt {
 
   val rotationalChannelPermutation: Array[Int] = Permutation.random(3, rotationalSegments)
 
+  /**
+   * Overrides the reference method to do nothing.
+   *
+   * @param log The notebook output.
+   * @docgenVersion 9
+   */
   override def reference(log: NotebookOutput): Unit = {
     val l2 = Permutation.rings(3).toList.sortBy(_._1).map(t => {
       val permutations = t._2.map(x => x.head).toList.sortBy(_.indices.sum).map(x => x.indices.map(_.toString).reduce(_ + "," + _))
@@ -52,6 +63,11 @@ abstract class RotorArt[U <: RotorArt[U]](
     </div>.toString())
   }
 
+  /**
+   * Returns a kaleidoscope image given the dimensions of the canvas.
+   *
+   * @docgenVersion 9
+   */
   def getKaleidoscope(canvasDims: Array[Int]) = {
     val permutation = Permutation(this.rotationalChannelPermutation: _*)
     require(permutation.unity == (permutation ^ rotationalSegments), s"$permutation ^ $rotationalSegments => ${(permutation ^ rotationalSegments)} != ${permutation.unity}")

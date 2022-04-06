@@ -4,23 +4,43 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.simiacryptus.mindseye.art.VisionPipelineLayer
 import com.simiacryptus.mindseye.art.models.{VGG16, VGG19}
 
+/**
+ * Class that represents a list of vision layers in JSON format.
+ *
+ * @param layers An array of strings, each representing a vision layer.
+ * @docgenVersion 9
+ */
 class VisionLayerListJson(
-                          val layers: Array[String]
-                        ) {
+                           val layers: Array[String]
+                         ) {
   def this() = {
     this(Array.empty[String])
   }
 
   def this(layerA: VisionPipelineLayer, layerList: VisionPipelineLayer*) = {
-    this((List(layerA)++layerList).map(_.name()).toArray)
+    this((List(layerA) ++ layerList).map(_.name()).toArray)
   }
 
+  /**
+   * @JsonIgnore
+   * def getLayerList(): List[VisionPipelineLayer] = {
+   * layers.map(getLayer).toList
+   * }
+   * @docgenVersion 9
+   */
   @JsonIgnore
   def getLayerList(): List[VisionPipelineLayer] = {
     layers.map(getLayer).toList
   }
 
-  def getLayer(layer:String): VisionPipelineLayer = {
+  /**
+   * Returns the specified layer of the VisionPipeline.
+   *
+   * @param layer the layer to return
+   * @return the specified layer of the VisionPipeline
+   * @docgenVersion 9
+   */
+  def getLayer(layer: String): VisionPipelineLayer = {
     List(
       VGG16.VGG16_1a,
       VGG16.VGG16_1b1,

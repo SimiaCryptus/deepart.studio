@@ -50,6 +50,12 @@ trait ImageOptimizer extends Logging {
 
   val maxRetries = 3
 
+  /**
+   * This function optimizes the given canvas image using the given trainable object.
+   * The notebook output is used for logging purposes.
+   *
+   * @docgenVersion 9
+   */
   def optimize(canvasImage: Tensor, trainable: Trainable)(implicit log: NotebookOutput): TrainingResult = {
     try {
       def currentImage = {
@@ -69,9 +75,9 @@ trait ImageOptimizer extends Logging {
       lazy val data = canvasImage.getData
       var noiseMagnitude = 1e-1
       var retries = 0;
-      while(result.terminationCause == TrainingResult.TerminationCause.Failed && retries < maxRetries) {
+      while (result.terminationCause == TrainingResult.TerminationCause.Failed && retries < maxRetries) {
         retries = retries + 1
-        (0 until data.length).foreach(i=>data(i) = data(i) + FastRandom.INSTANCE.random() * noiseMagnitude)
+        (0 until data.length).foreach(i => data(i) = data(i) + FastRandom.INSTANCE.random() * noiseMagnitude)
         noiseMagnitude = noiseMagnitude * 2
         result = withMonitoredJpg[TrainingResult](() => currentImage) {
           log.subreport("Optimization (Retry)", (sub: NotebookOutput) => {
@@ -92,6 +98,13 @@ trait ImageOptimizer extends Logging {
     }
   }
 
+  /**
+   * Renders the given canvas image.
+   *
+   * @param canvasImage the image to render
+   * @return the rendered image
+   * @docgenVersion 9
+   */
   def render(canvasImage: Tensor) = {
     val network = renderingNetwork(canvasImage.getDimensions)
     val result = network.eval(canvasImage)
@@ -103,19 +116,40 @@ trait ImageOptimizer extends Logging {
     tensor
   }
 
+  /**
+   * This function creates a new PipelineNetwork with one input layer and the specified dimensions.
+   *
+   * @docgenVersion 9
+   */
   def renderingNetwork(dims: Seq[Int]): Layer = new PipelineNetwork(1)
 
+  /**
+   * This function optimizes the current image using the trainable function.
+   *
+   * @param currentImage The image to be optimized.
+   * @param trainable    The function used to optimize the image.
+   * @param out          The notebook output.
+   * @return The result of the optimization.
+   * @docgenVersion 9
+   */
   def optimize(currentImage: () => BufferedImage, trainable: Trainable)(implicit out: NotebookOutput): TrainingResult = {
-//    trainable.getLayer match {
-//      case dag: DAGNetwork => new MermaidGrapher(out, false).mermaid(dag);
-//      case _ =>
-//    }
+    //    trainable.getLayer match {
+    //      case dag: DAGNetwork => new MermaidGrapher(out, false).mermaid(dag);
+    //      case _ =>
+    //    }
     val timelineAnimation = new ArrayBuffer[BufferedImage]()
     timelineAnimation += currentImage()
     NotebookRunner.withMonitoredGif(() => timelineAnimation.toList ++ List(currentImage()), delay = 1000) {
       withTrainingMonitor(trainingMonitor => {
         val lineSearchInstance: LineSearchStrategy = lineSearchFactory
         val trainer = new LoggingIterativeTrainer(trainable) {
+          /**
+           * Overrides the protected logState method to do nothing.
+           *
+           * @param sublog    The notebook output to log to
+           * @param iteration The current iteration
+           * @docgenVersion 9
+           */
           override protected def logState(sublog: NotebookOutput, iteration: Int): Unit = {
             if (true || 0 < logEvery && (0 == iteration % logEvery || iteration < logEvery)) {
               val image = currentImage()
@@ -127,16 +161,39 @@ trait ImageOptimizer extends Logging {
         }
         trainer.setOrientation(orientation())
         trainer.setMonitor(new TrainingMonitor() {
+          /**
+           * Clears the training monitor.
+           *
+           * @docgenVersion 9
+           */
           override def clear(): Unit = trainingMonitor.clear()
 
+          /**
+           * Logs the given message to the training monitor.
+           *
+           * @docgenVersion 9
+           */
           override def log(msg: String): Unit = {
             trainingMonitor.log(msg)
           }
 
+          /**
+           * Overrides the onStepFail method to take in a Trainable and a Step, and
+           * returns a boolean.
+           *
+           * @docgenVersion 9
+           */
           override def onStepFail(currentPoint: Step): Boolean = {
             ImageOptimizer.this.onStepFail(trainable.addRef().asInstanceOf[Trainable], currentPoint)
           }
 
+          /**
+           * This function is called when a training step is completed.
+           * It updates the ImageOptimizer with the new Trainable and Step data,
+           * and also updates the trainingMonitor.
+           *
+           * @docgenVersion 9
+           */
           override def onStepComplete(currentPoint: Step): Unit = {
             ImageOptimizer.this.onStepComplete(trainable.addRef().asInstanceOf[Trainable], currentPoint.addRef())
             trainingMonitor.onStepComplete(currentPoint)
@@ -155,11 +212,23 @@ trait ImageOptimizer extends Logging {
     }(out)
   }
 
+  /**
+   * This function is called when a training step is completed.
+   *
+   * @param trainable    The object that is being trained.
+   * @param currentPoint The current training step.
+   * @docgenVersion 9
+   */
   def onStepComplete(trainable: Trainable, currentPoint: Step) = {
     currentPoint.freeRef()
     setPrecision(trainable, Precision.Float)
   }
 
+  /**
+   * onStepFail is a function that takes in a Trainable and a Step, and returns a Boolean.
+   *
+   * @docgenVersion 9
+   */
   def onStepFail(trainable: Trainable, currentPoint: Step): Boolean = {
     currentPoint.freeRef()
     setPrecision(trainable, Precision.Double)
@@ -175,12 +244,27 @@ trait ImageOptimizer extends Logging {
 
   def maxRate = 1e9
 
+  /**
+   * This function defines a new TrustRegionStrategy with a LBFGS solver, and sets the region policy to trustRegion for the given layer.
+   *
+   * @docgenVersion 9
+   */
   def orientation() = {
     new TrustRegionStrategy(new LBFGS) {
+      /**
+       * Overrides the getRegionPolicy method to use a trustRegion for the given layer.
+       *
+       * @docgenVersion 9
+       */
       override def getRegionPolicy(layer: Layer) = trustRegion(layer)
     }
   }
 
+  /**
+   * Returns a trust region for the given layer.
+   *
+   * @docgenVersion 9
+   */
   def trustRegion(layer: Layer): TrustRegion = {
     //    new CompoundRegion(
     //      //                new RangeConstraint().setMin(0).setMax(256),
@@ -193,6 +277,12 @@ trait ImageOptimizer extends Logging {
     new RangeConstraint().setMin(0).setMax(256)
   }
 
+  /**
+   * This function is called when the notebook is completed.
+   * It tries to upload the notebook to S3.
+   *
+   * @docgenVersion 9
+   */
   def onComplete()(implicit log: NotebookOutput): Unit = {
     Try {
       S3Util.upload(log)

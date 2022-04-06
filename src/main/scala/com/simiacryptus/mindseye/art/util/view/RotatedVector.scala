@@ -4,6 +4,14 @@ import com.simiacryptus.mindseye.art.util.{Permutation, ViewMask}
 import com.simiacryptus.mindseye.lang.Layer
 import com.simiacryptus.mindseye.layers.java.AffineImgViewLayer
 
+/**
+ * This class represents a rotated vector.
+ *
+ * @param rotation the rotation of the vector
+ * @param symmetry whether the vector is symmetric
+ * @param mask     the view mask of the vector
+ * @docgenVersion 9
+ */
 case class RotatedVector
 (
   rotation: Map[Double, Permutation] = Map.empty,
@@ -11,6 +19,13 @@ case class RotatedVector
   mask: ViewMask = ViewMask()
 ) extends ImageView {
 
+  /**
+   * Returns a view of the specified dimensions.
+   *
+   * @param canvasDims the dimensions of the canvas
+   * @return a layer containing the view
+   * @docgenVersion 9
+   */
   def getView(canvasDims: Array[Int]): Layer = {
     def maybeLayers = for ((rotation, permutation) <- rotation.toArray) yield {
       val layer = new AffineImgViewLayer(canvasDims(0), canvasDims(1), true)

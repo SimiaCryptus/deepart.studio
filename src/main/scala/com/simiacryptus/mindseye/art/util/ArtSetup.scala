@@ -52,26 +52,43 @@ object ArtSetup {
   @transient implicit val ec2client: AmazonEC2 = AmazonEC2ClientBuilder.standard().withRegion(EC2Util.REGION).build()
 }
 
-trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] with TaskRegistry {
+trait ArtSetup[T <: AnyRef, U <: ArtSetup[T, U]] extends InteractiveSetup[T, U] with TaskRegistry {
 
   override def description: String = super.description
 
   override def className: String = getClass.getSimpleName.stripSuffix("$")
 
+  /**
+   * Returns an array of paintings that match the given search word and have a width greater than or equal to the given minimum width.
+   *
+   * @docgenVersion 9
+   */
   def getPaintingsBySearch(searchWord: String, minWidth: Int): Array[String] = {
     getPaintings(new URI("https://www.wikiart.org/en/search/" + URLEncoder.encode(searchWord, "UTF-8").replaceAllLiterally("+", "%20") + "/1?json=2"), minWidth, 100)
   }
 
+  /**
+   * Returns an array of paintings by the given artist that are at least the given width.
+   *
+   * @docgenVersion 9
+   */
   def getPaintingsByArtist(artist: String, minWidth: Int): Array[String] = {
     getPaintings(new URI("https://www.wikiart.org/en/App/Painting/PaintingsByArtist?artistUrl=" + artist), minWidth, 100)
   }
 
+  /**
+   * @param uri        the URI to fetch paintings from
+   * @param minWidth   the minimum width of the paintings to fetch
+   * @param maxResults the maximum number of results to fetch
+   * @return an array of Strings containing the fetched paintings
+   * @docgenVersion 9
+   */
   def getPaintings(uri: URI, minWidth: Int, maxResults: Int): Array[String] = {
     new GsonBuilder().create().fromJson(IOUtils.toString(
       uri,
       "UTF-8"
     ), classOf[util.ArrayList[util.Map[String, AnyRef]]])
-      .asScala.map(_.asScala).filter(_("width").asInstanceOf[Number].doubleValue() > minWidth)
+      .asScala.map(_.asScala).filter(_ ("width").asInstanceOf[Number].doubleValue() > minWidth)
       .map(_ ("image").toString.stripSuffix("!Large.jpg"))
       .take(maxResults)
       .map(file => {
@@ -93,6 +110,15 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
       }).filterNot(_.isEmpty).toArray
   }
 
+  /**
+   * This function takes a list of integers and returns a new list with the same
+   * elements, but with a binary fill pattern.
+   *
+   * For example, given the list [1, 2, 3, 4, 5], the function would return
+   * [1, 3, 2, 4, 5].
+   *
+   * @docgenVersion 9
+   */
   def binaryFill(seq: List[Int]): List[Int] = {
     if (seq.size < 3) seq
     else {
@@ -103,6 +129,21 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     }
   }
 
+  /**
+   * Animate the training of a visual network.
+   *
+   * @param contentUrl  The content image URL.
+   * @param initUrl     The initialization image URL.
+   * @param canvases    The buffer of canvases.
+   * @param networks    The buffer of networks.
+   * @param optimizer   The image optimizer.
+   * @param resolutions The sequence of resolutions.
+   * @param renderingFn The rendering function.
+   * @param getParams   The function to get parameters.
+   * @param delay       The delay in milliseconds.
+   * @param log         The notebook output.
+   * @docgenVersion 9
+   */
   def animate
   (
     contentUrl: String,
@@ -171,6 +212,20 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     }
   }
 
+  /**
+   * Paints an image on a given canvas using a given visual network and optimizer.
+   *
+   * @param contentUrl  the URL of the content image
+   * @param initUrl     the URL of the initialization image
+   * @param canvas      the canvas to paint on
+   * @param network     the visual network to use
+   * @param optimizer   the optimizer to use
+   * @param aspect      the aspect ratio of the content image
+   * @param resolutions the resolutions to use
+   * @param sub         the notebook output
+   * @return the loss value after painting
+   * @docgenVersion 9
+   */
   def paint
   (
     contentUrl: String,
@@ -189,6 +244,12 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     aspect = aspect,
     resolutions = resolutions)
 
+  /**
+   * This function paints the given content URL on a canvas using the given init function, visual network, and image optimizer.
+   * The resolutions and rendering function are optional.
+   *
+   * @docgenVersion 9
+   */
   def paint
   (
     contentUrl: String,
@@ -211,6 +272,16 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     )
   }
 
+  /**
+   * This function prepares the style image for training.
+   *
+   * @param contentTensor The content image tensor.
+   * @param network       The visual network.
+   * @param canvas        The canvas tensor.
+   * @param log           The notebook output.
+   * @return The trainable.
+   * @docgenVersion 9
+   */
   def stylePrepFn
   (
     contentTensor: Tensor,
@@ -223,6 +294,17 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     trainable
   }
 
+  /**
+   * Prepares the style image for training.
+   *
+   * @param contentUrl The URL of the content image.
+   * @param network    The visual network to use.
+   * @param canvas     The canvas tensor.
+   * @param width      The width of the content image.
+   * @param height     The height of the content image.
+   * @param log        The notebook output.
+   * @docgenVersion 9
+   */
   def stylePrepFn
   (
     contentUrl: String,
@@ -243,6 +325,12 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
   }
 
 
+  /**
+   * contentPrepFn prepares contentUrl for use with initFn, canvas, and network.
+   * heightFn is an optional function that takes an Int and returns an Int.
+   *
+   * @docgenVersion 9
+   */
   def contentPrepFn
   (
     contentUrl: String,
@@ -266,6 +354,16 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     }
   }
 
+  /**
+   * Updates the canvas with the given content tensor.
+   *
+   * @param canvas        The canvas to update.
+   * @param initFn        A function to initialize the canvas.
+   * @param contentTensor The tensor to use for the content.
+   * @param width         The width of the canvas.
+   * @param height        The height of the canvas.
+   * @docgenVersion 9
+   */
   private def updateCanvas(canvas: RefAtomicReference[Tensor], initFn: Tensor => Tensor, contentTensor: Tensor)(width: Int, height: Int) = {
     require(null != canvas)
     var currentCanvas: Tensor = canvas.get()
@@ -286,6 +384,16 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     currentCanvas
   }
 
+  /**
+   * This function paints an image using the given optimizer, resolutions, and prep.
+   *
+   * @param optimizer   The ImageOptimizer to use.
+   * @param resolutions The resolutions to use.
+   * @param prep        The prep function to use.
+   * @param log         The NotebookOutput to use.
+   * @return The painted image.
+   * @docgenVersion 9
+   */
   def paint
   (
     optimizer: ImageOptimizer,
@@ -293,12 +401,22 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     prep: Double => (Tensor, Trainable)
   )(implicit log: NotebookOutput): Double = {
     (for (res <- resolutions.toArray) yield {
-      if(resolutions.size > 1) log.h1("Resolution " + res)
+      if (resolutions.size > 1) log.h1("Resolution " + res)
       val (currentCanvas: Tensor, trainable: Trainable) = prep(res)
       optimizer.optimize(currentCanvas, trainable)
     }).last.finalValue
   }
 
+  /**
+   * This function paints an aspect of the given content URL.
+   * The initFn is used to initialize the canvas.
+   * The network is used to resolve the VisualNetwork.
+   * The optimizer is used to optimize the image.
+   * The resolutions are used to determine the height of the canvas.
+   * The heightFn is used to determine the height of the canvas.
+   *
+   * @docgenVersion 9
+   */
   def paint_aspectFn
   (
     contentUrl: String,
@@ -320,6 +438,19 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
         heightFn = heightFn))
   }
 
+  /**
+   * Paints a single image.
+   *
+   * @param contentUrl  The URL of the content image.
+   * @param initFn      A function that initializes the canvas.
+   * @param canvas      The canvas to paint on.
+   * @param network     The visual network.
+   * @param optimizer   The image optimizer.
+   * @param resolutions The resolutions to use.
+   * @param log         The notebook output.
+   * @return The loss.
+   * @docgenVersion 9
+   */
   def paint_single
   (
     contentUrl: String,
@@ -337,6 +468,20 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     renderingFn = x => new PipelineNetwork(1),
     resolutions = resolutions)
 
+  /**
+   * Paints a single view.
+   *
+   * @param contentUrl  The content URL.
+   * @param initFn      The initialization function.
+   * @param canvas      The canvas.
+   * @param network     The visual network.
+   * @param optimizer   The image optimizer.
+   * @param renderingFn The rendering function.
+   * @param resolutions The resolutions.
+   * @param log         The notebook output.
+   * @return The double.
+   * @docgenVersion 9
+   */
   def paint_single_view
   (
     contentUrl: String,
@@ -355,7 +500,17 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     renderingFn = renderingFn,
     resolutions = resolutions)
 
+  /**
+   * This function texture() takes in an aspect ratio, an initial URL, a canvas, a network, and an optimizer, as well as a sequence of resolutions, and returns a double.*
+   *
+   * @docgenVersion 9
+   */
   def texture(aspectRatio: Double, initUrl: String, canvas: RefAtomicReference[Tensor], network: VisualNetwork, optimizer: ImageOptimizer, resolutions: Seq[Double])(implicit log: NotebookOutput): Double = {
+    /**
+     * Prepares the given width.
+     *
+     * @docgenVersion 9
+     */
     def prep(width: Double) = {
       CudaSettings.INSTANCE().setDefaultPrecision(network.precision)
       val height = width * aspectRatio
@@ -368,6 +523,13 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
       if (null == content) content = contentTensor.toImage
       require(null != canvas)
 
+      /**
+       * Updates the canvas with the current content. If there is no current content,
+       * the canvas is loaded with the initial URL. Otherwise, the content is resized
+       * to fit the width and height of the canvas.
+       *
+       * @docgenVersion 9
+       */
       def updateCanvas(currentCanvas: Tensor) = {
         if (null == currentCanvas) {
           load(contentTensor, initUrl)
@@ -385,6 +547,12 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
       (currentCanvas, trainable)
     }
 
+    /**
+     * Runs the optimizer on the given canvas and trainable object.
+     * Renders the result and returns it as an RGB image.
+     *
+     * @docgenVersion 9
+     */
     def run(currentCanvas: Tensor, trainable: Trainable) = {
       try {
         optimizer.optimize(() => {
@@ -410,6 +578,12 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
     }
   }
 
+  /**
+   * Overrides the default apply method to also set up global handlers for the HTTP server and
+   * to generate CUDA reports.
+   *
+   * @docgenVersion 9
+   */
   override def apply(log: NotebookOutput): T = {
     TestUtil.addGlobalHandlers(log.getHttpd)
     ImageArtUtil.cudaReports(log, cudaLog)
@@ -424,6 +598,12 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T,U]] extends InteractiveSetup[T, U] w
 
 trait RepeatedArtSetup[T <: AnyRef] extends RepeatedInteractiveSetup[T] {
 
+  /**
+   * Overrides the default apply method to also set up global handlers for the HTTP server and
+   * to generate CUDA reports.
+   *
+   * @docgenVersion 9
+   */
   override def apply(log: NotebookOutput): T = {
     TestUtil.addGlobalHandlers(log.getHttpd)
     ImageArtUtil.cudaReports(log, cudaLog)

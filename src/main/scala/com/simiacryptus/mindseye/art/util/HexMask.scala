@@ -11,6 +11,12 @@ object HexMask {
   private val a = Math.cos(30 * (Math.PI / 180)) / 2
   private val b = Math.cos(60 * (Math.PI / 180)) / 2
 
+  /**
+   * Returns a cached view layer of the given dimensions,
+   * or creates and caches a new view layer if one does not already exist.
+   *
+   * @docgenVersion 9
+   */
   def maskLayer(dims: Int*) = {
     maskCache.getOrElseUpdate(dims.toList, {
       val raster = new Raster(dims(0), dims(1))
@@ -21,6 +27,12 @@ object HexMask {
     })
   }
 
+  /**
+   * This function wraps a layer around the given dimensions.
+   *
+   * @param dims The dimensions to wrap around.
+   * @docgenVersion 9
+   */
   def wrapLayer(dims: Int*) = {
     wrapCache.getOrElseUpdate(dims.toList, {
       val raster = new Raster(dims(0), dims(1))
@@ -39,6 +51,16 @@ object HexMask {
     })
   }
 
+  /**
+   * Tests whether the given coordinates are within the bounds of the given hexagon.
+   *
+   * @param x     the x coordinate to test
+   * @param y     the y coordinate to test
+   * @param sizeX the width of the hexagon
+   * @param sizeY the height of the hexagon
+   * @return true if the coordinates are within the hexagon, false otherwise
+   * @docgenVersion 9
+   */
   private def testHexBounds(x: Int, y: Int, sizeX: Int, sizeY: Int): Boolean = {
     if (sizeX > sizeY) {
       testHexBounds(y, x, sizeY, sizeX)

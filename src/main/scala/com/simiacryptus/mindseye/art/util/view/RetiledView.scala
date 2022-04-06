@@ -2,16 +2,26 @@ package com.simiacryptus.mindseye.art.util.view
 
 import com.simiacryptus.math.Point
 
+/**
+ * A RetiledView is an IndexedView with a default theta of Math.PI / 2.
+ *
+ * @docgenVersion 9
+ */
 case class RetiledView(theta: Double = Math.PI / 2) extends IndexedView {
   override def filterCircle = false
 
+  /**
+   * Defines a mapping function that transforms a Point into another Point.
+   *
+   * @docgenVersion 9
+   */
   def mappingFunction(): Point => Point = {
     (point: Point) => {
       try {
         val sin = Math.sin(theta)
         val cos = Math.cos(theta)
-        if(point.x < 0) {
-          if(point.y < 0) {
+        if (point.x < 0) {
+          if (point.y < 0) {
             val y = point.y + 0.5
             val x = point.x + 0.5
             new Point(
@@ -27,7 +37,7 @@ case class RetiledView(theta: Double = Math.PI / 2) extends IndexedView {
             )
           }
         } else {
-          if(point.y < 0) {
+          if (point.y < 0) {
             val y = point.y + 0.5
             val x = point.x - 0.5
             new Point(
@@ -44,7 +54,7 @@ case class RetiledView(theta: Double = Math.PI / 2) extends IndexedView {
           }
         }
       } catch {
-        case e : Throwable => null
+        case e: Throwable => null
       }
     }
   }

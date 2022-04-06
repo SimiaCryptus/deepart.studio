@@ -37,6 +37,21 @@ object JobRegistration {
 
 import com.simiacryptus.mindseye.art.registry.JobRegistration._
 
+/**
+ * This abstract class represents a job registration.
+ *
+ * @param bucket      the bucket to use
+ * @param reportUrl   the report URL
+ * @param liveUrl     the live URL
+ * @param canvas      the canvas to use
+ * @param instances   the instances to use
+ * @param id          the id to use
+ * @param indexFile   the index file to use
+ * @param className   the class name to use
+ * @param indexStr    the index string to use
+ * @param description the description to use
+ * @docgenVersion 9
+ */
 abstract class JobRegistration[T]
 (
   bucket: String,
@@ -54,8 +69,21 @@ abstract class JobRegistration[T]
 ) extends AutoCloseable with Logging {
   var future: ScheduledFuture[_] = null
 
+  /**
+   * Starts the process.
+   *
+   * @param s3client  the Amazon S3 client
+   * @param ec2client the Amazon EC2 client
+   * @docgenVersion 9
+   */
   def start()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
     future = scheduledExecutorService.scheduleAtFixedRate(new Runnable {
+      /**
+       * Overrides the run method to try to update the job registration.
+       * If there is an error, it will be logged.
+       *
+       * @docgenVersion 9
+       */
       override def run(): Unit = try {
         update()
       } catch {
@@ -67,6 +95,11 @@ abstract class JobRegistration[T]
 
   def periodMinutes = 5
 
+  /**
+   * This function stops the Amazon S3 and EC2 clients.
+   *
+   * @docgenVersion 9
+   */
   def stop()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
     try {
       update()
@@ -80,11 +113,21 @@ abstract class JobRegistration[T]
     }
   }
 
+  /**
+   * Updates the S3 and EC2 clients.
+   *
+   * @docgenVersion 9
+   */
   def update()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
     upload()
     rebuildIndex()
   }
 
+  /**
+   * Uploads the current canvas to S3.
+   *
+   * @docgenVersion 9
+   */
   def upload()(implicit s3client: AmazonS3) = {
     Option(canvas()).foreach(img => logger.info("Writing " + JobRegistry(
       reportUrl = reportUrl,
@@ -99,10 +142,20 @@ abstract class JobRegistration[T]
     ).save(bucket)))
   }
 
+  /**
+   * Rebuilds the index using the implicit S3 and EC2 clients.
+   *
+   * @docgenVersion 9
+   */
   def rebuildIndex()(implicit s3client: AmazonS3, ec2client: AmazonEC2) = {
     val jobs = JobRegistry.list(bucket).toArray.groupBy(_.className)
     logger.info(s"Rebuilding index for $bucket (${jobs.values.flatten.size} jobs)")
 
+    /**
+     * Converts the given JobRegistry instance to HTML.
+     *
+     * @docgenVersion 9
+     */
     def toHtml(item: JobRegistry) = {
       if (item.isLive()(ec2client).toOption.getOrElse(false)) {
         s"""<div style="width: 100%; float: left;"><div style="float: left;"><a href="${item.liveUrl}"><img src="${item.image}" /></a></div><div>${item.description}</div></div>""".stripMargin
@@ -119,6 +172,14 @@ abstract class JobRegistration[T]
     logger.info(s"Finished Rebuilding index for $bucket")
   }
 
+  /**
+   * Writes the given HTML string to the index file on S3.
+   *
+   * @param indexFile the name of the index file
+   * @param bodyHtml  the HTML string to write
+   * @param s3client  an implicit AmazonS3 client
+   * @docgenVersion 9
+   */
   def write(indexFile: String, bodyHtml: String)(implicit s3client: AmazonS3) = {
     logger.info(s"Writing http://$bucket/$indexFile")
     val metadata = new ObjectMetadata()
@@ -154,6 +215,11 @@ abstract class JobRegistration[T]
     ), metadata).withCannedAcl(CannedAccessControlList.PublicRead))
   }
 
+  /**
+   * Cancels the timer if it is running.
+   *
+   * @docgenVersion 9
+   */
   override def close(): Unit = {
     if (null != future) {
       future.cancel(false)
@@ -164,6 +230,13 @@ abstract class JobRegistration[T]
 
   def uploadImage(value: T)(implicit s3client: AmazonS3): String
 
+  /**
+   * Converts a BufferedImage into a ByteArrayInputStream.
+   *
+   * @param image the image to convert
+   * @return the resulting ByteArrayInputStream
+   * @docgenVersion 9
+   */
   def toStream(image: BufferedImage): ByteArrayInputStream = {
     val outputStream = new ByteArrayOutputStream()
     ImageIO.write(image, "jpg", outputStream)

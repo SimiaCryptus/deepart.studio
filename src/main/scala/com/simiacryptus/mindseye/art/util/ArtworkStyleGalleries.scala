@@ -2,6 +2,14 @@ package com.simiacryptus.mindseye.art.util
 
 trait ArtworkStyleGalleries {
 
+  /**
+   * Gallery class that contains a name and lists of low and high resolution images.
+   *
+   * @param name    Name of the gallery
+   * @param lowRes  List of low resolution images
+   * @param highRes List of high resolution images
+   * @docgenVersion 9
+   */
   protected sealed case class Gallery
   (
     name: String,
@@ -159,10 +167,23 @@ trait ArtworkStyleGalleries {
     VanGogh
   )
 
+  /**
+   * This function returns a sequence of strings that have been
+   * filtered and mapped from a given list of strings.
+   *
+   * @docgenVersion 9
+   */
   def styleGalleries_lowRes(list: Seq[String]): Seq[String] = list.flatMap(name => {
     galleries.find(_.name == name).map(_.lowRes).getOrElse(List(name))
   }).filter(_.nonEmpty)
 
+  /**
+   * Takes a list of gallery names and returns a list of high-resolution gallery names.
+   *
+   * @param list a sequence of gallery names
+   * @return a sequence of high-resolution gallery names
+   * @docgenVersion 9
+   */
   def styleGalleries_highRes(list: Seq[String]): Seq[String] = list.flatMap(name => {
     galleries.find(_.name == name).map(_.highRes).getOrElse(List(name))
   }).filter(_.nonEmpty).filter(_.nonEmpty)
