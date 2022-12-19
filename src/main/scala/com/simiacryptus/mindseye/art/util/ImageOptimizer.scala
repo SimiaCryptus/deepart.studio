@@ -48,6 +48,7 @@ import scala.util.Try
 
 trait ImageOptimizer extends Logging {
 
+  val minCompletedIterations = 3
   val maxRetries = 3
 
   /**
@@ -75,7 +76,7 @@ trait ImageOptimizer extends Logging {
       lazy val data = canvasImage.getData
       var noiseMagnitude = 1e-1
       var retries = 0;
-      while (result.terminationCause == TrainingResult.TerminationCause.Failed && retries < maxRetries) {
+      while (result.terminationCause == TrainingResult.TerminationCause.Failed && result.iteratons < minCompletedIterations && retries < maxRetries) {
         retries = retries + 1
         (0 until data.length).foreach(i => data(i) = data(i) + FastRandom.INSTANCE.random() * noiseMagnitude)
         noiseMagnitude = noiseMagnitude * 2

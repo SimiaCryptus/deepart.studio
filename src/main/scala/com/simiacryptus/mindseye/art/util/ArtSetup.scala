@@ -39,7 +39,7 @@ import com.simiacryptus.mindseye.test.TestUtil
 import com.simiacryptus.mindseye.util.ImageUtil
 import com.simiacryptus.notebook.{MarkdownNotebookOutput, NotebookOutput, NullNotebookOutput}
 import com.simiacryptus.ref.wrappers.RefAtomicReference
-import com.simiacryptus.sparkbook.{InteractiveSetup, NotebookRunner, RepeatedInteractiveSetup}
+import com.simiacryptus.sparkbook.{InteractiveSetup, NotebookRunner}
 import com.simiacryptus.util.FastRandom
 import org.apache.commons.io.{FileUtils, IOUtils}
 
@@ -52,7 +52,8 @@ object ArtSetup {
   @transient implicit val ec2client: AmazonEC2 = AmazonEC2ClientBuilder.standard().withRegion(EC2Util.REGION).build()
 }
 
-trait ArtSetup[T <: AnyRef, U <: ArtSetup[T, U]] extends InteractiveSetup[T, U] with TaskRegistry {
+trait ArtSetup[R <: AnyRef, V <: InteractiveSetup[R, V]] extends InteractiveSetup[R, V] with TaskRegistry {
+  var s3bucket: String = ""
 
   override def description: String = super.description
 
@@ -584,27 +585,7 @@ trait ArtSetup[T <: AnyRef, U <: ArtSetup[T, U]] extends InteractiveSetup[T, U] 
    *
    * @docgenVersion 9
    */
-  override def apply(log: NotebookOutput): T = {
-    TestUtil.addGlobalHandlers(log.getHttpd)
-    ImageArtUtil.cudaReports(log, cudaLog)
-    log.asInstanceOf[MarkdownNotebookOutput].setMaxImageSize(maxImageSize)
-    super.apply(log)
-  }
-
-  def cudaLog = false
-
-  def maxImageSize = 10000
-}
-
-trait RepeatedArtSetup[T <: AnyRef] extends RepeatedInteractiveSetup[T] {
-
-  /**
-   * Overrides the default apply method to also set up global handlers for the HTTP server and
-   * to generate CUDA reports.
-   *
-   * @docgenVersion 9
-   */
-  override def apply(log: NotebookOutput): T = {
+  override def apply(log: NotebookOutput): R = {
     TestUtil.addGlobalHandlers(log.getHttpd)
     ImageArtUtil.cudaReports(log, cudaLog)
     log.asInstanceOf[MarkdownNotebookOutput].setMaxImageSize(maxImageSize)

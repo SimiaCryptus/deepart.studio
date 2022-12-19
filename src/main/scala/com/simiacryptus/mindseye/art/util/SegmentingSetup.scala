@@ -48,7 +48,7 @@ import scala.collection.mutable
  *
  * @docgenVersion 9
  */
-abstract class SegmentingSetup extends ArtSetup[Object, SegmentingSetup] {
+abstract class SegmentingSetup[T <: SegmentingSetup[T]] extends ArtSetup[Object, T] {
 
   @JsonIgnore lazy val fastPhotoStyleTransfer = FastPhotoStyleTransfer.fromZip(new ZipFile(Util.cacheFile(new URI(
     "https://simiacryptus.s3-us-west-2.amazonaws.com/photo_wct.zip"))))

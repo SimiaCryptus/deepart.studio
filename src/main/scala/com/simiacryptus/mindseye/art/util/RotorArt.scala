@@ -20,13 +20,14 @@
 package com.simiacryptus.mindseye.art.util
 
 import com.simiacryptus.notebook.NotebookOutput
+import com.simiacryptus.sparkbook.InteractiveSetup
 
 /**
  * An abstract class for a RotorArt object. The class takes in an integer for the number of rotational segments and extends the ArtSetup and GeometricArt traits.
  *
  * @docgenVersion 9
  */
-abstract class RotorArt[U <: RotorArt[U]](
+abstract class RotorArt[U <: AnyRef with InteractiveSetup[Object, U]](
                                            val rotationalSegments: Int = 3
                                          ) extends ArtSetup[Object, U] with GeometricArt {
 
